@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/guard";
 import { enabledModules } from "@/lib/tenant";
-import { permissionsFor } from "@/lib/roles";
+import { permissionsFor, ROLE_LABELS, type Role } from "@/lib/roles";
 import { Banner } from "@/components/ui";
 import { SignOutButton } from "@/components/sign-out";
 import { signOutAction } from "../login/actions";
@@ -11,10 +11,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const on = await enabledModules(school.id);
   const perms = permissionsFor(session.roles);
 
-  const nav: { href: string; label: string }[] = [{ href: "/", label: "Home" }];
+  const nav: { href: string; label: string }[] = [{ href: "/", label: "Today" }];
   if (perms.has("attendance.take")) nav.push({ href: "/attendance", label: "Take attendance" });
   if (perms.has("attendance.view_all") && on.has("attendance"))
-    nav.push({ href: "/attendance/report", label: "Attendance report" });
+    nav.push({ href: "/attendance/report", label: "Report" });
   if (perms.has("students.view")) nav.push({ href: "/students", label: "Students" });
   if (perms.has("sections.manage")) nav.push({ href: "/setup", label: "Setup" });
   if (perms.has("users.manage")) nav.push({ href: "/people", label: "People" });
@@ -25,25 +25,34 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-full">
       <header className="brand-bg text-white">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-5 py-3">
-          <div>
-            <Link href="/" className="font-semibold">
+        <div className="mx-auto flex max-w-[72rem] items-center justify-between gap-4 px-5 py-3">
+          <div className="min-w-0">
+            <Link href="/" className="w-wide block truncate text-[1.0625rem] font-bold">
               {school.name}
             </Link>
-            <span className="ml-2 text-xs opacity-75">{school.subdomain}</span>
+            <p className="w-narrow truncate text-[0.75rem] text-white/60">
+              {school.subdomain}
+            </p>
           </div>
-          <div className="flex items-center gap-3 text-sm">
-            <span className="opacity-85">{session.name}</span>
+          <div className="flex min-w-0 items-center gap-3 text-sm">
+            <span className="hidden min-w-0 text-right leading-tight sm:block">
+              <span className="block truncate">{session.name}</span>
+              <span className="w-narrow block truncate text-[0.75rem] text-white/60">
+                {session.roles.map((r) => ROLE_LABELS[r as Role] ?? r).join(", ")}
+              </span>
+            </span>
             <SignOutButton action={signOutAction} />
           </div>
         </div>
-        <nav className="border-t border-white/15">
-          <div className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-3 py-1 text-sm">
+
+        {/* Tabbed dividers, the way a binder is indexed. */}
+        <nav className="bg-[#25456a]">
+          <div className="mx-auto flex max-w-[72rem] overflow-x-auto px-5 text-sm">
             {nav.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className="whitespace-nowrap rounded-md px-3 py-1.5 hover:bg-white/10"
+                className="whitespace-nowrap border-b-[3px] border-transparent px-3 py-2.5 text-white/85 first:pl-0 hover:border-white/30 hover:text-white"
               >
                 {item.label}
               </Link>
@@ -52,21 +61,22 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </nav>
       </header>
 
-      <div className="mx-auto max-w-6xl px-5 py-6">
+      <div className="mx-auto max-w-[72rem] space-y-9 px-5 py-8">
         {school.status === "past_due" && (
-          <div className="mb-5">
-            <Banner tone="warn">
-              An invoice is past due. Everything still works — settle it from the
-              billing page to avoid a hold.
-            </Banner>
-          </div>
+          <Banner tone="warn">
+            An invoice is past due. Everything still works. Settle it from
+            Billing and nothing changes.
+          </Banner>
         )}
         {school.status === "trial" && school.trialEndsAt && (
-          <div className="mb-5">
-            <Banner>
-              Free trial until {school.trialEndsAt.toLocaleDateString("en-PH")}.
-            </Banner>
-          </div>
+          <Banner>
+            Free trial until{" "}
+            {school.trialEndsAt.toLocaleDateString("en-PH", {
+              day: "numeric",
+              month: "long",
+            })}
+            .
+          </Banner>
         )}
         {children}
       </div>

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { currentSchool, getSchoolSession } from "@/lib/session";
-import { Card } from "@/components/ui";
+import { Panel } from "@/components/ui";
 import LoginForm from "./form";
 
 export const metadata = { title: "Sign in" };
@@ -12,20 +12,20 @@ export default async function LoginPage() {
   if (session && school && session.schoolId === school.id) redirect("/");
 
   return (
-    <div className="mx-auto max-w-md px-5 py-16">
-      <h1 className="mb-1 text-2xl font-semibold">{school?.name}</h1>
-      <p className="mb-6 text-sm text-black/65 dark:text-white/65">
-        Staff, students and parents sign in here.
+    <div className="mx-auto w-full max-w-[26rem] px-5 py-12 sm:py-20">
+      <h1 className="w-wide text-[1.75rem] font-bold leading-tight">{school?.name}</h1>
+      <p className="mt-1.5 mb-7 text-[var(--ink-soft)]">
+        Staff, students and parents all sign in here.
       </p>
-      <Card>
+      <Panel>
         <LoginForm />
-      </Card>
-      <p className="mt-4 text-sm text-black/65 dark:text-white/65">
-        A student or parent with no account yet?{" "}
-        <Link href="/signup" className="brand-text font-medium underline">
+      </Panel>
+      <p className="mt-5 text-sm text-[var(--ink-soft)]">
+        No account yet?{" "}
+        <Link href="/signup" className="font-medium text-[var(--brand)] underline underline-offset-2">
           Sign up with a student ID
         </Link>
-        .
+        . Staff are invited by the school admin.
       </p>
     </div>
   );

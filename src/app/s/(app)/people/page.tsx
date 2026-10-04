@@ -1,10 +1,11 @@
+import Link from "next/link";
 import { asc, eq } from "drizzle-orm";
 import { withTenant } from "@/db";
 import { invites, userRoles, users } from "@/db/schema";
 import { requirePermission } from "@/lib/guard";
 import { ROLE_LABELS, ROLE_SCOPES, STAFF_ROLES } from "@/lib/roles";
 import { ActionForm } from "@/components/action-form";
-import { Card, Field, Input, Select, Table } from "@/components/ui";
+import { Section, Field, Input, Select, Table } from "@/components/ui";
 import { inviteStaff } from "../setup/actions";
 
 export const metadata = { title: "People" };
@@ -37,7 +38,7 @@ export default async function PeoplePage() {
 
   return (
     <div className="grid gap-5">
-      <Card
+      <Section
         title="Invite staff"
         subtitle="Staff accounts are invite-only. There is no public staff signup."
       >
@@ -58,35 +59,35 @@ export default async function PeoplePage() {
             </Select>
           </Field>
         </ActionForm>
-      </Card>
+      </Section>
 
-      <Card title="People" subtitle={`${data.staff.length} accounts`}>
+      <Section title="People" subtitle={`${data.staff.length} accounts`}>
         <Table head={["Name", "Email", "Roles", "Status"]}>
           {data.staff.map((u) => (
             <tr key={u.id}>
-              <td className="py-2 pr-4 font-medium">{u.name}</td>
-              <td className="py-2 pr-4">{u.email ?? "—"}</td>
-              <td className="py-2 pr-4">
+              <td className="py-2 pr-5 font-medium">{u.name}</td>
+              <td className="py-2 pr-5">{u.email ?? "—"}</td>
+              <td className="py-2 pr-5">
                 {(rolesByUser.get(u.id) ?? []).map((r) => ROLE_LABELS[r as never] ?? r).join(", ") ||
                   "—"}
               </td>
-              <td className="py-2 pr-4">{u.status}</td>
+              <td className="py-2 pr-5">{u.status}</td>
             </tr>
           ))}
         </Table>
-      </Card>
+      </Section>
 
       {data.pending.filter((i) => !i.acceptedAt).length > 0 && (
-        <Card title="Invites not yet accepted">
+        <Section title="Invites not yet accepted">
           <Table head={["Name", "Email", "Role", "Link"]}>
             {data.pending
               .filter((i) => !i.acceptedAt)
               .map((i) => (
                 <tr key={i.id}>
-                  <td className="py-2 pr-4">{i.name}</td>
-                  <td className="py-2 pr-4">{i.email}</td>
-                  <td className="py-2 pr-4">{ROLE_LABELS[i.role as never] ?? i.role}</td>
-                  <td className="py-2 pr-4">
+                  <td className="py-2 pr-5">{i.name}</td>
+                  <td className="py-2 pr-5">{i.email}</td>
+                  <td className="py-2 pr-5">{ROLE_LABELS[i.role as never] ?? i.role}</td>
+                  <td className="py-2 pr-5">
                     <a className="brand-text underline" href={`/invite/${i.token}`}>
                       /invite/{i.token.slice(0, 8)}…
                     </a>
@@ -94,19 +95,32 @@ export default async function PeoplePage() {
                 </tr>
               ))}
           </Table>
-        </Card>
+        </Section>
       )}
 
-      <Card title="What each role reaches" subtitle="Checked on the server for every request.">
+      <Section
+        title="What each role reaches"
+        subtitle={
+          <>
+            Checked on the server for every request, not just hidden from the
+            menu. Students and parents claim their own accounts with the codes
+            on the{" "}
+            <Link href="/students" className="font-medium text-[var(--brand)] underline underline-offset-2">
+              Students
+            </Link>{" "}
+            page.
+          </>
+        }
+      >
         <Table head={["Role", "Scope"]}>
           {STAFF_ROLES.concat(["parent", "student"]).map((r) => (
             <tr key={r}>
-              <td className="py-2 pr-4 font-medium">{ROLE_LABELS[r]}</td>
-              <td className="py-2 pr-4">{ROLE_SCOPES[r]}</td>
+              <td className="py-2 pr-5 font-medium">{ROLE_LABELS[r]}</td>
+              <td className="py-2 pr-5">{ROLE_SCOPES[r]}</td>
             </tr>
           ))}
         </Table>
-      </Card>
+      </Section>
     </div>
   );
 }

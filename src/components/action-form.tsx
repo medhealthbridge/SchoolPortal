@@ -10,7 +10,7 @@ export function ActionForm({
   action,
   submitLabel,
   children,
-  className = "grid gap-3 sm:grid-cols-2",
+  className = "grid gap-4 sm:grid-cols-2",
 }: {
   action: Action;
   submitLabel: string;
@@ -19,12 +19,12 @@ export function ActionForm({
 }) {
   const [state, dispatch, pending] = useActionState<ActionResult, FormData>(action, null);
   return (
-    <form action={dispatch} className="grid gap-3">
+    <form action={dispatch} className="grid gap-4">
       {state?.error && (
         <Banner tone="danger">
           {state.error}
           {state.issues && (
-            <ul className="mt-2 list-disc pl-5">
+            <ul className="mt-2 list-disc space-y-0.5 pl-5">
               {state.issues.map((i) => (
                 <li key={i}>{i}</li>
               ))}
@@ -36,7 +36,7 @@ export function ActionForm({
       <div className={className}>{children}</div>
       <div>
         <Button type="submit" disabled={pending}>
-          {pending ? "Working…" : submitLabel}
+          {pending ? "Saving" : submitLabel}
         </Button>
       </div>
     </form>

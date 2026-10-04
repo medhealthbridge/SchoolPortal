@@ -33,7 +33,7 @@ export default function SignupForms() {
             className={`rounded-lg px-3 py-1.5 ${
               tab === t
                 ? "brand-bg text-white"
-                : "border border-black/15 dark:border-white/20"
+                : "border border-[var(--rule)]"
             }`}
           >
             {t === "student" ? "I am a student" : "I am a parent"}

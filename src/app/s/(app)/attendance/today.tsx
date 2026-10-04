@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Banner, Card } from "@/components/ui";
+import { Banner, Meta, Section } from "@/components/ui";
 import { drainQueue, localCache, queue, registerServiceWorker } from "@/lib/offline";
 import { prettyTime, WEEKDAYS } from "@/lib/format";
 
@@ -37,9 +37,7 @@ export default function TodayClasses() {
         await localCache.set(`today:${today}`, data);
         setOffline(false);
       } catch {
-        const cached = await localCache.get<{ slots: Slot[]; weekday: number }>(
-          `today:${today}`,
-        );
+        const cached = await localCache.get<{ slots: Slot[]; weekday: number }>(`today:${today}`);
         setSlots(cached?.slots ?? []);
         setWeekday(cached?.weekday ?? 0);
         setOffline(true);
@@ -59,53 +57,51 @@ export default function TodayClasses() {
   }, []);
 
   return (
-    <div className="grid gap-5">
+    <>
       {offline && (
         <Banner tone="warn">
           No signal. These classes came from this morning&apos;s download, and
-          everything you tap is saved here until the signal returns.
+          everything you mark is held here until the signal returns.
         </Banner>
       )}
       {pendingCount > 0 && (
         <Banner tone="warn">
-          {pendingCount} {pendingCount === 1 ? "tap" : "taps"} waiting to upload.
+          {pendingCount} {pendingCount === 1 ? "mark is" : "marks are"} waiting to go up.
         </Banner>
       )}
 
-      <Card
-        title={`Today — ${WEEKDAYS[weekday] || ""}`}
-        subtitle="Tap a class to open its seat plan."
+      <Section
+        title={WEEKDAYS[weekday] || "Today"}
+        subtitle="Open a class to take it. Each one remembers its seat plan."
       >
         {slots === null ? (
-          <p className="text-sm text-black/60">Loading…</p>
+          <p className="text-sm text-[var(--ink-soft)]">Opening your timetable.</p>
         ) : slots.length === 0 ? (
-          <p className="text-sm text-black/60 dark:text-white/60">
-            No classes on the timetable today.
+          <p className="max-w-[60ch] text-sm text-[var(--ink-soft)]">
+            Nothing on your timetable today. The school admin builds the
+            timetable in Setup, and your classes appear here the same day.
           </p>
         ) : (
-          <ul className="divide-y divide-black/5 dark:divide-white/10">
+          <ul className="ledger-rows">
             {slots.map((s) => (
               <li key={s.id}>
                 <Link
                   href={`/attendance/${s.id}?date=${date}`}
-                  className="flex items-center justify-between gap-3 py-3 hover:opacity-80"
+                  className="flex items-baseline justify-between gap-4 py-3 hover:text-[var(--brand)]"
                 >
-                  <span>
+                  <span className="min-w-0">
                     <span className="block font-medium">{s.subjectName}</span>
-                    <span className="block text-sm text-black/60 dark:text-white/60">
-                      {s.sectionLabel}
-                      {s.roomName ? ` · ${s.roomName}` : ""}
-                    </span>
+                    <Meta items={[s.sectionLabel, s.roomName].filter(Boolean) as string[]} />
                   </span>
-                  <span className="shrink-0 text-sm tabular-nums text-black/65 dark:text-white/65">
-                    {prettyTime(s.startsAt)}–{prettyTime(s.endsAt)}
+                  <span className="shrink-0 text-sm font-semibold">
+                    {prettyTime(s.startsAt)}
                   </span>
                 </Link>
               </li>
             ))}
           </ul>
         )}
-      </Card>
-    </div>
+      </Section>
+    </>
   );
 }

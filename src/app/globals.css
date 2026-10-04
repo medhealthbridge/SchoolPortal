@@ -1,49 +1,145 @@
 @import "tailwindcss";
 
+/*
+ * SchoolPortal is a class record book.
+ *
+ * Every structural device here comes from the paper form it replaces —
+ * DepEd's School Form 2: a ruled grid, a narrow left margin for the student
+ * number, condensed labels squeezed into column heads, and a letter code in
+ * every cell. Sections are separated by rules, never by floating cards, and
+ * nothing casts a shadow: paper does not hover.
+ */
+
 @theme {
-  --color-brand-50: #eef3f9;
-  --color-brand-100: #d6e2f0;
-  --color-brand-300: #8fadd0;
-  --color-brand-500: #4a73a0;
+  /* Ledger paper: the pale green of an accounting pad, not cream. */
+  --color-paper: #f1f4ec;
+  --color-paper-raised: #fbfcf8;
+  --color-paper-sunken: #e7ebe1;
+
+  /* Ink is the brand navy taken to its darkest, never a tinted black. */
+  --color-ink: #16283d;
+  --color-ink-soft: #4a5d72;
+  --color-ink-faint: #7f8d9b;
+
+  --color-rule: #ccd5c5;
+  --color-rule-soft: #e0e6da;
+
   --color-brand: #2f557f;
-  --color-brand-700: #27456790;
-  --color-brand-900: #1b3049;
+  --color-brand-deep: #1d3a5c;
+  --color-brand-tint: #dde6f1;
 
   --color-accent: #ffa92d;
-  --color-accent-soft: #fff3df;
+  --color-accent-tint: #fff0d7;
+  --color-accent-ink: #7a4b00;
 
-  /* Attendance status. Never colour alone: each pairs with a letter badge. */
-  --color-present: #1f7a4d;
+  /* Attendance. Present is quiet so the exceptions carry the eye. */
+  --color-present: #2e6f4e;
   --color-absent: #b3261e;
-  --color-late: #a35c00;
-  --color-excused: #4a5a6a;
+  --color-late: #a96800;
+  --color-excused: #5a6b7b;
+
+  --font-sans: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
 }
 
 :root {
   --brand: #2f557f;
   --accent: #ffa92d;
-}
 
-html,
-body {
-  height: 100%;
+  --paper: var(--color-paper);
+  --paper-raised: var(--color-paper-raised);
+  --paper-sunken: var(--color-paper-sunken);
+  --ink: var(--color-ink);
+  --ink-soft: var(--color-ink-soft);
+  --ink-faint: var(--color-ink-faint);
+  --rule: var(--color-rule);
+  --rule-soft: var(--color-rule-soft);
+  --brand-tint: var(--color-brand-tint);
+  --accent-tint: var(--color-accent-tint);
 }
-
-body {
-  background: #f6f7f9;
-  color: #16202b;
-  -webkit-text-size-adjust: 100%;
-}
-
-/* A school's own colours, set on <body> from the database. */
-.brand-bg { background-color: var(--brand); }
-.brand-text { color: var(--brand); }
-.accent-bg { background-color: var(--accent); }
-.accent-text { color: #5a3a00; }
 
 @media (prefers-color-scheme: dark) {
-  body {
-    background: #10161d;
-    color: #e7edf4;
+  :root {
+    --paper: #10202e;
+    --paper-raised: #16293a;
+    --paper-sunken: #0b1823;
+    --ink: #e8efe6;
+    --ink-soft: #a9bbc9;
+    --ink-faint: #76889a;
+    --rule: #294157;
+    --rule-soft: #1e3245;
+    --brand-tint: #1c3450;
+    --accent-tint: #3a2a0d;
+  }
+}
+
+html {
+  background: var(--paper);
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* The width axis does the work two typefaces usually would. */
+.w-wide {
+  font-variation-settings: "wdth" 118;
+  letter-spacing: -0.018em;
+}
+.w-narrow {
+  font-variation-settings: "wdth" 86;
+}
+
+/* A section head: the rule is the container. */
+.ledger-rule {
+  border-top: 2px solid var(--brand);
+}
+.ledger-hair {
+  border-top: 1px solid var(--rule);
+}
+
+/* Rows of a record: hairline between, nothing around. */
+.ledger-rows > * + * {
+  border-top: 1px solid var(--rule-soft);
+}
+
+/* A bound page: used only where a true container is needed. */
+.ledger-page {
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--brand);
+}
+
+.brand-bg {
+  background-color: var(--brand);
+}
+.brand-text {
+  color: var(--brand);
+}
+@media (prefers-color-scheme: dark) {
+  .brand-text {
+    color: #8fb3dc;
+  }
+}
+.accent-bg {
+  background-color: var(--accent);
+}
+
+/* Focus has to survive on paper and on the navy masthead alike. */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
   }
 }

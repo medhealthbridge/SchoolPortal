@@ -14,7 +14,8 @@ export default async function AdminDash({ children }: { children: React.ReactNod
     <div className="min-h-full">
       <header className="bg-[#1b3049] text-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3">
-          <span className="font-semibold">SchoolPortal · platform admin</span>
+          <span className="w-wide text-[1.0625rem] font-bold">SchoolPortal</span>
+            <span className="w-narrow ml-2 text-[0.8125rem] text-white/65">platform admin</span>
           <div className="flex items-center gap-3 text-sm">
             <span className="opacity-85">{admin.name}</span>
             <SignOutButton action={adminSignOut} />
@@ -23,7 +24,7 @@ export default async function AdminDash({ children }: { children: React.ReactNod
         <nav className="border-t border-white/15">
           <div className="mx-auto flex max-w-6xl gap-1 px-3 py-1 text-sm">
             {nav.map((n) => (
-              <Link key={n.href} href={n.href} className="rounded-md px-3 py-1.5 hover:bg-white/10">
+              <Link key={n.href} href={n.href} className="whitespace-nowrap border-b-[3px] border-transparent px-3 py-2.5 text-white/85 first:pl-0 hover:border-white/30 hover:text-white">
                 {n.label}
               </Link>
             ))}

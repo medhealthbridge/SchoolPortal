@@ -1,10 +1,11 @@
+import Link from "next/link";
 import { and, asc, eq } from "drizzle-orm";
 import { withTenant } from "@/db";
 import { sections } from "@/db/schema";
 import { requirePermission } from "@/lib/guard";
 import { monthlyReport } from "@/modules/attendance/queries";
 import { monthKey } from "@/lib/format";
-import { Card, Table } from "@/components/ui";
+import { Section, Table } from "@/components/ui";
 
 export const metadata = { title: "Attendance report" };
 
@@ -41,9 +42,9 @@ export default async function ReportPage({
 
   return (
     <div className="grid gap-5">
-      <Card
+      <Section
         title="Monthly attendance"
-        subtitle={`${rows.length} students · ${month}`}
+        subtitle={`${rows.length} students, ${month}`}
         actions={
           <a
             href={`/api/attendance/report.csv?${query}`}
@@ -60,7 +61,7 @@ export default async function ReportPage({
               type="month"
               name="month"
               defaultValue={month}
-              className="rounded-lg border border-black/15 px-3 py-2 text-sm dark:border-white/20 dark:bg-white/5"
+              className="rounded-[2px] border border-[var(--rule)] border-b-2 border-b-[var(--ink-soft)] bg-[var(--paper-raised)] px-3 py-2 text-sm"
             />
           </label>
           <label className="text-sm">
@@ -68,7 +69,7 @@ export default async function ReportPage({
             <select
               name="section"
               defaultValue={sectionId ?? ""}
-              className="rounded-lg border border-black/15 px-3 py-2 text-sm dark:border-white/20 dark:bg-white/5"
+              className="rounded-[2px] border border-[var(--rule)] border-b-2 border-b-[var(--ink-soft)] bg-[var(--paper-raised)] px-3 py-2 text-sm"
             >
               <option value="">All sections</option>
               {sectionList.map((s) => (
@@ -78,38 +79,43 @@ export default async function ReportPage({
               ))}
             </select>
           </label>
-          <button className="brand-bg rounded-lg px-4 py-2 text-sm font-medium text-white">
+          <button className="rounded-[2px] bg-[var(--brand)] px-4 py-2 text-sm font-medium text-white">
             Show
           </button>
         </form>
 
         {rows.length === 0 ? (
-          <p className="text-sm text-black/60 dark:text-white/60">
-            Nothing recorded for this month yet.
+          <p className="text-sm text-[var(--ink-soft)]">
+            Nothing recorded for this month yet. Teachers take their classes
+            from{" "}
+            <Link href="/attendance" className="font-medium text-[var(--brand)] underline underline-offset-2">
+              Take attendance
+            </Link>
+            .
           </p>
         ) : (
           <Table head={["Student", "ID", "Present", "Absent", "Late", "Excused"]}>
             {rows.map((r) => (
               <tr key={r.studentId}>
-                <td className="py-2 pr-4 font-medium">{r.name}</td>
-                <td className="py-2 pr-4 tabular-nums">{r.studentNumber}</td>
-                <td className="py-2 pr-4 tabular-nums">{r.present}</td>
-                <td className="py-2 pr-4 tabular-nums">{r.absent}</td>
-                <td className="py-2 pr-4 tabular-nums">{r.late}</td>
-                <td className="py-2 pr-4 tabular-nums">{r.excused}</td>
+                <td className="py-2 pr-5 font-medium">{r.name}</td>
+                <td className="py-2 pr-5 tabular-nums">{r.studentNumber}</td>
+                <td className="py-2 pr-5 tabular-nums">{r.present}</td>
+                <td className="py-2 pr-5 tabular-nums">{r.absent}</td>
+                <td className="py-2 pr-5 tabular-nums">{r.late}</td>
+                <td className="py-2 pr-5 tabular-nums">{r.excused}</td>
               </tr>
             ))}
             <tr className="font-semibold">
-              <td className="py-2 pr-4">Total</td>
+              <td className="py-2 pr-5">Total</td>
               <td />
-              <td className="py-2 pr-4 tabular-nums">{totals.present}</td>
-              <td className="py-2 pr-4 tabular-nums">{totals.absent}</td>
-              <td className="py-2 pr-4 tabular-nums">{totals.late}</td>
-              <td className="py-2 pr-4 tabular-nums">{totals.excused}</td>
+              <td className="py-2 pr-5 tabular-nums">{totals.present}</td>
+              <td className="py-2 pr-5 tabular-nums">{totals.absent}</td>
+              <td className="py-2 pr-5 tabular-nums">{totals.late}</td>
+              <td className="py-2 pr-5 tabular-nums">{totals.excused}</td>
             </tr>
           </Table>
         )}
-      </Card>
+      </Section>
     </div>
   );
 }

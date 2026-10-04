@@ -40,15 +40,24 @@ await page.waitForSelector("button[aria-label]");
 const seats = await page.locator("button[aria-label]").count();
 log(`class screen: ${seats} seats`);
 
-// Tap three seats: present → absent.
+// Tap three seats and check each one actually changed its mark.
+const labelsBefore = await page
+  .locator("button[aria-label]")
+  .evaluateAll((els) => els.slice(0, 3).map((e) => e.getAttribute("aria-label")));
 for (let i = 0; i < 3; i++) await page.locator("button[aria-label]").nth(i).click();
-log(`after taps: ${await page.locator('button[aria-label*="Absent"]').count()} absent`);
+const labelsAfter = await page
+  .locator("button[aria-label]")
+  .evaluateAll((els) => els.slice(0, 3).map((e) => e.getAttribute("aria-label")));
+const changed = labelsBefore.filter((l, i) => l !== labelsAfter[i]).length;
+log(`taps changed ${changed} of 3 seats, now ${labelsAfter.join(", ")}`);
+if (changed !== 3) throw new Error("tapping a seat did not change its mark");
 
 // Go offline, submit, confirm it is queued and not lost.
 await ctx.setOffline(true);
 await page.click('button:has-text("Submit")');
-await page.waitForSelector("text=/Saved on this phone|Submitted/");
-log(`offline submit: ${(await page.locator('[role="status"]').first().textContent())?.trim()}`);
+const savedBanner = page.locator('[role="status"]', { hasText: /Held on this phone|Submitted\./ });
+await savedBanner.first().waitFor();
+log(`offline submit: ${(await savedBanner.first().textContent())?.trim()}`);
 
 // The taps are on the phone, not on the server.
 const queued = await page.evaluate(
@@ -67,7 +76,31 @@ await ctx.setOffline(false);
 await page.reload();
 await page.waitForSelector("button[aria-label]");
 await page.waitForTimeout(1500);
-log(`back online keeps: ${await page.locator('button[aria-label*="Absent"]').count()} absent`);
+const reloaded = await page
+  .locator("button[aria-label]")
+  .evaluateAll((els) => els.slice(0, 3).map((e) => e.getAttribute("aria-label")));
+log(`back online, the server has: ${reloaded.join(", ")}`);
+if (reloaded.join("|") !== labelsAfter.join("|"))
+  throw new Error("the marks taken offline did not survive the upload");
+// The upload is a round trip per mark, so poll rather than guess a delay.
+const queueLength = () =>
+  page.evaluate(
+    () =>
+      new Promise((resolve) => {
+        const req = indexedDB.open("schoolportal", 1);
+        req.onsuccess = () => {
+          const all = req.result.transaction("queue").objectStore("queue").getAll();
+          all.onsuccess = () => resolve(all.result.length);
+        };
+      }),
+  );
+let left = await queueLength();
+for (let i = 0; i < 30 && left > 0; i++) {
+  await page.waitForTimeout(500);
+  left = await queueLength();
+}
+log(`queue drained to ${left}`);
+if (left !== 0) throw new Error("the queue never emptied after the signal returned");
 await page.screenshot({ path: "./attendance.png", fullPage: false });
 
 // 2. Registration wizard, all four steps.
@@ -114,6 +147,6 @@ await page3.screenshot({ path: "./modules.png" });
 // 5. A suspended school stops at the hold page.
 const page4 = await ctx.newPage();
 await page4.goto(base("northgate.lvh.me", "/"));
-log(`suspended school → ${page4.url()} : ${await page4.locator("h2").first().textContent()}`);
+log(`suspended school → ${page4.url()} : ${await page4.locator("h1").first().textContent()}`);
 
 await browser.close();

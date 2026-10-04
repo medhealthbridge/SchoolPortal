@@ -11,8 +11,9 @@ import {
   users,
 } from "@/db/schema";
 import { requirePermission } from "@/lib/guard";
+import Link from "next/link";
 import { ActionForm } from "@/components/action-form";
-import { Card, Field, Input, Select, Table } from "@/components/ui";
+import { Section, Field, Input, Select, Table } from "@/components/ui";
 import { WEEKDAYS, prettyTime } from "@/lib/format";
 import {
   addRoom,
@@ -82,39 +83,70 @@ export default async function SetupPage() {
   });
 
   const checklist = [
-    { label: "Owner email verified", done: school.emailVerifiedAt !== null },
-    { label: "Current school year set", done: data.year !== null },
-    { label: "Sections created", done: data.sections.length > 0 },
-    { label: "Subjects and rooms", done: data.subjects.length > 0 && data.rooms.length > 0 },
-    { label: "Students imported", done: Number(data.studentCount ?? 0) > 0 },
-    { label: "Timetable built", done: data.slots.length > 0 },
+    { label: "Verify the owner's email", done: school.emailVerifiedAt !== null, href: null },
+    { label: "Set the school year", done: data.year !== null, href: "#year" },
+    { label: "Add your sections", done: data.sections.length > 0, href: "#sections" },
+    {
+      label: "Add subjects and rooms",
+      done: data.subjects.length > 0 && data.rooms.length > 0,
+      href: "#subjects",
+    },
+    {
+      label: "Import your students",
+      done: Number(data.studentCount ?? 0) > 0,
+      href: "#import",
+    },
+    { label: "Build the timetable", done: data.slots.length > 0, href: "#timetable" },
+    {
+      label: "Invite your staff",
+      done: data.teachers.length > 1,
+      href: "/people",
+    },
   ];
+  const left = checklist.filter((c) => !c.done);
 
   return (
-    <div className="grid gap-5">
-      <Card title="Go-live checklist" subtitle="Finish these and attendance opens by itself.">
-        <ul className="grid gap-2 text-sm sm:grid-cols-2">
+    <>
+      <Section
+        title="Before you go live"
+        subtitle={
+          left.length === 0
+            ? "Everything is in place. Teachers can take attendance today."
+            : `${left.length} left. Each one opens the part of this page that does it.`
+        }
+      >
+        <ol className="ledger-rows">
           {checklist.map((c) => (
-            <li key={c.label} className="flex items-center gap-2">
+            <li key={c.label} className="flex items-center gap-3 py-2.5 text-sm">
               <span
                 aria-hidden
-                className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold text-white ${
-                  c.done ? "bg-[#1f7a4d]" : "bg-black/25"
+                className={`inline-flex h-4 w-4 shrink-0 items-center justify-center text-[11px] font-bold text-white ${
+                  c.done ? "bg-[var(--color-present)]" : "bg-[var(--rule)]"
                 }`}
               >
-                {c.done ? "✓" : "·"}
+                {c.done ? "\u2713" : ""}
               </span>
-              <span className={c.done ? "" : "text-black/60 dark:text-white/60"}>{c.label}</span>
+              {c.done || !c.href ? (
+                <span className={c.done ? "text-[var(--ink-soft)]" : ""}>{c.label}</span>
+              ) : (
+                <Link
+                  href={c.href}
+                  className="font-medium text-[var(--brand)] underline underline-offset-2"
+                >
+                  {c.label}
+                </Link>
+              )}
             </li>
           ))}
-        </ul>
-      </Card>
+        </ol>
+      </Section>
 
-      <Card
+      <Section
+        id="year"
         title="School year"
         subtitle={
           data.year
-            ? `Current: ${data.year.name} (${data.year.startsOn} → ${data.year.endsOn})`
+            ? `${data.year.name}, running ${data.year.startsOn} to ${data.year.endsOn}`
             : "Enrollment is per school year, so a transfer never rewrites history."
         }
       >
@@ -131,10 +163,10 @@ export default async function SetupPage() {
             </Field>
           </div>
         </ActionForm>
-      </Card>
+      </Section>
 
-      <div className="grid gap-5 lg:grid-cols-2">
-        <Card title="Sections" subtitle={`${data.sections.length} so far`}>
+      <div className="grid gap-10 lg:grid-cols-2">
+        <Section id="sections" title="Sections" subtitle={`${data.sections.length} so far`}>
           <ActionForm action={addSection} submitLabel="Add section">
             <Field label="Level">
               <Input name="level" placeholder="Grade 7" required />
@@ -146,15 +178,15 @@ export default async function SetupPage() {
           {data.sections.length > 0 && (
             <ul className="mt-4 flex flex-wrap gap-2 text-xs">
               {data.sections.map((s) => (
-                <li key={s.id} className="rounded-full bg-brand-50 px-3 py-1 text-[#1b3049]">
+                <li key={s.id} className="rounded-[2px] border border-[var(--rule)] bg-[var(--paper-raised)] px-2 py-0.5 text-[var(--ink)]">
                   {s.level} {s.name}
                 </li>
               ))}
             </ul>
           )}
-        </Card>
+        </Section>
 
-        <Card title="Subjects" subtitle={`${data.subjects.length} so far`}>
+        <Section id="subjects" title="Subjects" subtitle={`${data.subjects.length} so far`}>
           <ActionForm action={addSubject} submitLabel="Add subject">
             <Field label="Code">
               <Input name="code" placeholder="MATH7" required />
@@ -166,15 +198,15 @@ export default async function SetupPage() {
           {data.subjects.length > 0 && (
             <ul className="mt-4 flex flex-wrap gap-2 text-xs">
               {data.subjects.map((s) => (
-                <li key={s.id} className="rounded-full bg-brand-50 px-3 py-1 text-[#1b3049]">
+                <li key={s.id} className="rounded-[2px] border border-[var(--rule)] bg-[var(--paper-raised)] px-2 py-0.5 text-[var(--ink)]">
                   {s.code}
                 </li>
               ))}
             </ul>
           )}
-        </Card>
+        </Section>
 
-        <Card title="Rooms" subtitle="The grid is the seat plan's shape.">
+        <Section id="rooms" title="Rooms" subtitle="The grid is the seat plan's shape.">
           <ActionForm action={addRoom} submitLabel="Add room">
             <Field label="Name">
               <Input name="name" placeholder="Room 201" required />
@@ -191,15 +223,16 @@ export default async function SetupPage() {
           {data.rooms.length > 0 && (
             <ul className="mt-4 flex flex-wrap gap-2 text-xs">
               {data.rooms.map((r) => (
-                <li key={r.id} className="rounded-full bg-brand-50 px-3 py-1 text-[#1b3049]">
-                  {r.name} · {r.rows}×{r.cols}
+                <li key={r.id} className="rounded-[2px] border border-[var(--rule)] bg-[var(--paper-raised)] px-2 py-0.5 text-[var(--ink)]">
+                  {r.name}, {r.rows}×{r.cols}
                 </li>
               ))}
             </ul>
           )}
-        </Card>
+        </Section>
 
-        <Card
+        <Section
+          id="import"
           title="Import students"
           subtitle="CSV columns: student_number, first_name, last_name, section"
         >
@@ -208,14 +241,14 @@ export default async function SetupPage() {
               <input type="file" name="file" accept=".csv,text/csv" required className="text-sm" />
             </Field>
           </ActionForm>
-          <p className="mt-3 text-xs text-black/55 dark:text-white/55">
+          <p className="mt-3 text-xs text-[var(--ink-faint)]">
             {Number(data.studentCount ?? 0)} students on file. Each import generates
             an activation code and a separate parent code per student.
           </p>
-        </Card>
+        </Section>
       </div>
 
-      <Card title="Timetable" subtitle="This is what lets attendance open the right class.">
+      <Section id="timetable" title="Timetable" subtitle="This is what lets attendance open the right class.">
         <ActionForm action={addTimetableSlot} submitLabel="Add class" className="grid gap-3 sm:grid-cols-3">
           <Field label="Teacher">
             <Select name="teacherUserId" required>
@@ -281,21 +314,21 @@ export default async function SetupPage() {
             <Table head={["Day", "Time", "Class", "Teacher", "Room"]}>
               {data.slots.map((s) => (
                 <tr key={s.id}>
-                  <td className="py-2 pr-4">{WEEKDAYS[s.weekday]}</td>
-                  <td className="py-2 pr-4 tabular-nums">
+                  <td className="py-2 pr-5">{WEEKDAYS[s.weekday]}</td>
+                  <td className="py-2 pr-5 tabular-nums">
                     {prettyTime(s.startsAt)}–{prettyTime(s.endsAt)}
                   </td>
-                  <td className="py-2 pr-4">
-                    {s.subject} · {s.level} {s.section}
+                  <td className="py-2 pr-5">
+                    {s.subject}, {s.level} {s.section}
                   </td>
-                  <td className="py-2 pr-4">{s.teacher}</td>
-                  <td className="py-2 pr-4">{s.room ?? "—"}</td>
+                  <td className="py-2 pr-5">{s.teacher}</td>
+                  <td className="py-2 pr-5">{s.room ?? "—"}</td>
                 </tr>
               ))}
             </Table>
           </div>
         )}
-      </Card>
-    </div>
+      </Section>
+    </>
   );
 }

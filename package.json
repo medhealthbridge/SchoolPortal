@@ -12,7 +12,8 @@
     "db:seed": "tsx src/db/seed.ts",
     "db:reset": "tsx src/db/reset.ts",
     "test": "vitest run",
-    "smoke": "node scripts/smoke.mjs"
+    "smoke": "node scripts/smoke.mjs",
+    "responsive": "node scripts/resp-check.mjs"
   },
   "dependencies": {
     "drizzle-orm": "^0.44.6",

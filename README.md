@@ -51,6 +51,37 @@ npm run typecheck
 npm run build
 ```
 
+## The look of it
+
+The product it replaces is a class record book, so the interface is one too.
+That is where every structural choice comes from, rather than from a dashboard
+template:
+
+- **Rules, not cards.** A section is a 2px navy rule with its name beneath it;
+  rows are separated by hairlines. Nothing floats and nothing casts a shadow.
+  The one container is `Panel`, a bound page with a spine, used where content
+  genuinely needs an edge (a sign-in form, the hero demo).
+- **Ledger paper.** The ground is `#F1F4EC`, the pale green of an accounting
+  pad. Ink is `#16283D`, the brand navy taken to its darkest, never a tinted
+  black. The plan's `#2F557F` and `#FFA92D` are kept as given.
+- **One typeface across its width axis.** Archivo variable: expanded for
+  headlines, normal for text, condensed for column heads, because that is how
+  a form fits a label into a narrow column. Tabular figures throughout.
+- **Square documents, soft controls.** Zero radius on anything document-like,
+  2px on anything you touch.
+- **Letter codes.** Every attendance mark carries its letter (P, A, L, E) as
+  well as its colour, as it is written on School Form 2. Present is a quiet
+  green so the exceptions carry the eye.
+
+The home page opens on the product rather than on a headline: a live seat grid
+with a switch that cuts the signal, so a visitor can watch taps queue instead
+of disappear.
+
+**Responsive**: every screen is checked at 320, 360, 390, 414, 768, 1024 and
+1440 px with no horizontal page scroll (`npm run responsive`). The seat grid
+is the one thing that scrolls sideways on a phone — it keeps the room's shape
+instead of squeezing the names out, and a list view is one tap away.
+
 ## How a request is served
 
 ```

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Banner, Button, Card, STATUS_META } from "@/components/ui";
+import { Banner, Button, Meta, Section, SeatChip, STATUS_META, STATUS_ORDER } from "@/components/ui";
 import type { AttendanceStatus } from "@/components/ui";
 import { drainQueue, localCache, queue, uuid } from "@/lib/offline";
 import { prettyTime } from "@/lib/format";
@@ -29,7 +29,7 @@ type ClassData = {
   date: string;
 };
 
-/** Tapping a seat walks through the statuses, so one finger does everything. */
+/** One finger does everything: a seat walks through the four marks. */
 const NEXT_STATUS: Record<AttendanceStatus, AttendanceStatus> = {
   present: "absent",
   absent: "late",
@@ -49,31 +49,9 @@ export default function TakeAttendance({ slotId, date }: { slotId: string; date:
   const cacheKey = `class:${slotId}:${date}`;
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        const res = await fetch(`/api/attendance/class/${slotId}?date=${date}`);
-        if (!res.ok) throw new Error("offline");
-        const fresh: ClassData = await res.json();
-        setData(fresh);
-        await localCache.set(cacheKey, fresh);
-        setOffline(false);
-        await seed(fresh);
-        // Anything left from a class taken with no signal goes up now.
-        await drainQueue();
-      } catch {
-        const cached = await localCache.get<ClassData>(cacheKey);
-        if (cached) {
-          setData(cached);
-          await seed(cached);
-        }
-        setOffline(true);
-      }
-      setPending(await queue.countForSlot(slotId, date));
-    };
-
-    // Everyone starts present; the teacher taps only the empty seats. What is
-    // already on the server comes next, and taps still waiting on this phone
-    // come last — they are the newest thing this teacher did.
+    // Everyone starts present; the teacher marks only the empty seats. What is
+    // on the server comes next, and taps still held on this phone come last —
+    // they are the newest thing this teacher did.
     const seed = async (d: ClassData) => {
       const next: Record<string, AttendanceStatus> = {};
       for (const s of d.roster) next[s.studentId] = "present";
@@ -85,6 +63,27 @@ export default function TakeAttendance({ slotId, date }: { slotId: string; date:
       for (const q of queued) next[q.studentId] = q.status;
 
       setStatuses(next);
+    };
+
+    const load = async () => {
+      try {
+        const res = await fetch(`/api/attendance/class/${slotId}?date=${date}`);
+        if (!res.ok) throw new Error("offline");
+        const fresh: ClassData = await res.json();
+        setData(fresh);
+        await localCache.set(cacheKey, fresh);
+        setOffline(false);
+        await seed(fresh);
+        await drainQueue();
+      } catch {
+        const cached = await localCache.get<ClassData>(cacheKey);
+        if (cached) {
+          setData(cached);
+          await seed(cached);
+        }
+        setOffline(true);
+      }
+      setPending(await queue.countForSlot(slotId, date));
     };
 
     void load();
@@ -118,101 +117,111 @@ export default function TakeAttendance({ slotId, date }: { slotId: string; date:
     setPending(await queue.countForSlot(slotId, date));
     setSaved(
       result.left > 0
-        ? `Saved on this phone. ${result.left} waiting to upload.`
+        ? `Held on this phone. ${result.left} marks go up when the signal returns.`
         : `Submitted. ${counts.present} present, ${counts.absent} absent, ${counts.late} late.`,
     );
     setBusy(false);
   };
 
   if (!data) {
-    return <Card>Loading the class list…</Card>;
+    return <Section title="Opening the class list">{null}</Section>;
   }
 
   const grid = buildGrid(data.roster);
 
   return (
-    <div className="grid gap-5">
+    <>
       {offline && (
         <Banner tone="warn">
-          No signal. Every tap is saved on this phone and uploads by itself.
+          No signal. Every mark is saved on this phone and goes up by itself.
         </Banner>
       )}
       {saved && <Banner>{saved}</Banner>}
       {pending > 0 && !saved && (
-        <Banner tone="warn">{pending} taps from this class are waiting to upload.</Banner>
+        <Banner tone="warn">{pending} marks from this class are waiting to go up.</Banner>
       )}
 
-      <Card
-        title={`${data.slot.subjectName} · ${data.slot.sectionLabel}`}
-        subtitle={`${prettyTime(data.slot.startsAt)}–${prettyTime(data.slot.endsAt)}${
-          data.slot.roomName ? ` · ${data.slot.roomName}` : ""
-        } · ${date}`}
+      <Section
+        title={data.slot.subjectName}
+        subtitle={
+          <Meta
+            items={[
+              data.slot.sectionLabel,
+              data.slot.roomName,
+              `${prettyTime(data.slot.startsAt)} to ${prettyTime(data.slot.endsAt)}`,
+              data.date,
+            ].filter(Boolean) as string[]}
+          />
+        }
         actions={
-          <div className="flex shrink-0 items-center gap-3 text-sm">
-            <button
-              type="button"
-              onClick={() => setView((v) => (v === "seats" ? "list" : "seats"))}
-              className="rounded-md border border-black/15 px-2 py-1 text-xs dark:border-white/20"
-            >
-              {view === "seats" ? "List" : "Seat plan"}
-            </button>
-            <Link href="/attendance" className="underline">
+          <div className="flex items-center gap-4 text-sm">
+            {grid && (
+              <button
+                type="button"
+                onClick={() => setView((v) => (v === "seats" ? "list" : "seats"))}
+                className="rounded-[2px] border border-[var(--ink-soft)] px-2.5 py-1 text-[0.8125rem]"
+              >
+                {view === "seats" ? "Show as a list" : "Show the seat plan"}
+              </button>
+            )}
+            <Link href="/attendance" className="underline underline-offset-2">
               All classes
             </Link>
           </div>
         }
       >
-        <div className="mb-4 flex flex-wrap gap-3 text-xs">
-          {(Object.keys(STATUS_META) as AttendanceStatus[]).map((s) => (
-            <span key={s} className="inline-flex items-center gap-1.5">
-              <span
-                aria-hidden
-                className="inline-flex h-5 w-5 items-center justify-center rounded font-mono text-[11px] font-bold text-white"
-                style={{ backgroundColor: STATUS_META[s].color }}
-              >
-                {STATUS_META[s].letter}
-              </span>
-              {STATUS_META[s].label}: <strong>{counts[s]}</strong>
-            </span>
+        <dl className="mb-5 flex flex-wrap gap-x-5 gap-y-1.5">
+          {STATUS_ORDER.map((k) => (
+            <div key={k} className="flex items-baseline gap-1.5 text-sm">
+              <dt className="flex items-baseline gap-1.5 text-[var(--ink-soft)]">
+                <span
+                  aria-hidden
+                  className="inline-block h-2.5 w-2.5 translate-y-[1px]"
+                  style={{ backgroundColor: STATUS_META[k].color }}
+                />
+                {STATUS_META[k].label}
+              </dt>
+              <dd className="text-base font-semibold">{counts[k]}</dd>
+            </div>
           ))}
-        </div>
+        </dl>
 
         {grid && view === "seats" ? (
           <>
-            <p className="mb-2 text-center text-[11px] uppercase tracking-wide text-black/45 dark:text-white/45">
+            <p className="w-narrow mb-2.5 text-center text-[0.75rem] text-[var(--ink-faint)]">
               front of the room
             </p>
             {/* The grid keeps the room's shape; on a phone it scrolls sideways
-                rather than squeezing the names out. */}
+                rather than squeezing out the names. */}
             <div className="-mx-1 max-w-full overflow-x-auto px-1 pb-1">
               <div
-                className="grid gap-2"
-                style={{ gridTemplateColumns: `repeat(${grid.cols}, minmax(92px, 1fr))` }}
+                className="grid gap-1.5"
+                style={{ gridTemplateColumns: `repeat(${grid.cols}, minmax(94px, 1fr))` }}
               >
                 {grid.cells.map((cell, i) =>
                   cell ? (
-                    <SeatButton
+                    <SeatChip
                       key={cell.studentId}
-                      entry={cell}
+                      name={cell.name.split(",")[0]}
+                      secondary={cell.name.split(",")[1]?.trim()}
+                      title={`${cell.name}, ${cell.studentNumber}`}
                       status={statuses[cell.studentId] ?? "present"}
                       onTap={() => cycle(cell.studentId)}
                     />
                   ) : (
-                    <div
-                      key={`gap-${i}`}
-                      className="rounded-lg border border-dashed border-black/10 dark:border-white/10"
-                    />
+                    <div key={`gap-${i}`} className="border border-dashed border-[var(--rule)]" />
                   ),
                 )}
               </div>
             </div>
           </>
         ) : (
-          <ul className="grid gap-2 sm:grid-cols-2">
+          <ul className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
             {data.roster.map((entry) => (
               <li key={entry.studentId}>
-                <SeatButton
-                  entry={entry}
+                <SeatChip
+                  name={entry.name}
+                  secondary={entry.studentNumber}
                   status={statuses[entry.studentId] ?? "present"}
                   onTap={() => cycle(entry.studentId)}
                 />
@@ -221,53 +230,16 @@ export default function TakeAttendance({ slotId, date }: { slotId: string; date:
           </ul>
         )}
 
-        <div className="mt-5 flex items-center gap-3">
+        <div className="ledger-hair mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 pt-4">
           <Button onClick={submit} disabled={busy}>
-            {busy ? "Saving…" : "Submit"}
+            {busy ? "Saving" : "Submit"}
           </Button>
-          <span className="text-xs text-black/55 dark:text-white/55">
-            Tap a seat to change it: present → absent → late → excused.
-          </span>
+          <p className="max-w-[48ch] text-sm text-[var(--ink-soft)]">
+            Tap a seat to mark it absent. Tap again for late, again for excused.
+          </p>
         </div>
-      </Card>
-    </div>
-  );
-}
-
-function SeatButton({
-  entry,
-  status,
-  onTap,
-}: {
-  entry: RosterEntry;
-  status: AttendanceStatus;
-  onTap: () => void;
-}) {
-  const meta = STATUS_META[status];
-  return (
-    <button
-      type="button"
-      onClick={onTap}
-      aria-label={`${entry.name}: ${meta.label}`}
-      title={`${entry.name} · ${entry.studentNumber}`}
-      className="flex w-full items-center gap-2 rounded-lg border border-black/10 bg-white p-1.5 text-left transition active:scale-[0.97] dark:border-white/15 dark:bg-white/5"
-    >
-      <span
-        aria-hidden
-        className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded font-mono text-sm font-bold text-white"
-        style={{ backgroundColor: meta.color }}
-      >
-        {meta.letter}
-      </span>
-      <span className="min-w-0 leading-tight">
-        <span className="block truncate text-[11px] font-medium">
-          {entry.name.split(",")[0]}
-        </span>
-        <span className="block truncate text-[10px] text-black/55 dark:text-white/55">
-          {entry.name.split(",")[1]?.trim() ?? entry.studentNumber}
-        </span>
-      </span>
-    </button>
+      </Section>
+    </>
   );
 }
 

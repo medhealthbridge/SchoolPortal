@@ -19,6 +19,8 @@ export type ModuleKey =
 export type ModuleDefinition = {
   key: ModuleKey;
   name: string;
+  /** What it does, in the words a school would use. Table names are not it. */
+  summary: string;
   /** Core is always on and cannot be switched off. */
   alwaysOn?: boolean;
   owns: string[];
@@ -32,6 +34,7 @@ export const MODULES: Record<ModuleKey, ModuleDefinition> = {
   core: {
     key: "core",
     name: "Core",
+    summary: "Your school, its branches, every person in it, and the student record that everything else hangs on.",
     alwaysOn: true,
     owns: [
       "schools",
@@ -51,6 +54,7 @@ export const MODULES: Record<ModuleKey, ModuleDefinition> = {
   attendance: {
     key: "attendance",
     name: "Attendance",
+    summary: "The timetable, a seat plan per room, and the daily register, taken on a phone with or without signal.",
     owns: ["timetable_slots", "seat_plans", "attendance_records"],
     emits: ["student.marked_late", "student.marked_absent", "student.absence_streak"],
     listensTo: ["discipline.suspension_started"],
@@ -59,6 +63,7 @@ export const MODULES: Record<ModuleKey, ModuleDefinition> = {
   grades: {
     key: "grades",
     name: "Grades",
+    summary: "Scores by grading period, and the report card they add up to.",
     owns: ["scores", "grading_periods", "report_cards"],
     emits: ["grade.period_closed", "student.failing"],
     listensTo: ["student.marked_absent", "sao.service_hours_logged"],
@@ -67,6 +72,7 @@ export const MODULES: Record<ModuleKey, ModuleDefinition> = {
   portal: {
     key: "portal",
     name: "Parent and student portal",
+    summary: "What parents and students see: alerts, announcements, and their own records.",
     owns: ["announcements", "portal_alerts"],
     emits: [],
     listensTo: ["student.marked_absent", "grade.period_closed", "billing.balance_changed"],
@@ -75,6 +81,7 @@ export const MODULES: Record<ModuleKey, ModuleDefinition> = {
   discipline: {
     key: "discipline",
     name: "Discipline",
+    summary: "Incident reports, offence levels, sanctions and the notices that go home.",
     owns: ["incidents", "offense_levels", "sanctions"],
     emits: ["discipline.suspension_started", "discipline.repeat_case"],
     listensTo: ["student.marked_late"],
@@ -83,6 +90,7 @@ export const MODULES: Record<ModuleKey, ModuleDefinition> = {
   guidance: {
     key: "guidance",
     name: "Guidance",
+    summary: "Confidential cases, referrals and appointments, visible only to the guidance office.",
     owns: ["guidance_cases", "referrals", "appointments"],
     emits: [],
     listensTo: ["student.absence_streak", "student.failing", "discipline.repeat_case"],
@@ -91,6 +99,7 @@ export const MODULES: Record<ModuleKey, ModuleDefinition> = {
   registrar: {
     key: "registrar",
     name: "Registrar",
+    summary: "Enrolment, transfers, transcripts and certificates, with clearance before each one.",
     owns: ["enrollment_requests", "transfers", "transcripts", "certificates"],
     emits: ["registrar.clearance_requested"],
     listensTo: ["billing.hold_placed"],
@@ -99,6 +108,7 @@ export const MODULES: Record<ModuleKey, ModuleDefinition> = {
   billing: {
     key: "billing",
     name: "Billing",
+    summary: "School fees, payment plans, receipts and the balance owing per student.",
     owns: ["fees", "payment_plans", "receipts", "balances"],
     emits: ["billing.balance_changed", "billing.hold_placed"],
     listensTo: ["student.enrolled"],
@@ -107,6 +117,7 @@ export const MODULES: Record<ModuleKey, ModuleDefinition> = {
   sao: {
     key: "sao",
     name: "SAO",
+    summary: "Clubs, events, elections and student IDs.",
     owns: ["clubs", "school_events", "elections", "student_ids"],
     emits: ["sao.service_hours_logged"],
     listensTo: [],
@@ -115,6 +126,7 @@ export const MODULES: Record<ModuleKey, ModuleDefinition> = {
   chaplain: {
     key: "chaplain",
     name: "Chaplain",
+    summary: "Ministry activities, formation records and service hours.",
     owns: ["ministry_activities", "formation_records"],
     emits: ["sao.service_hours_logged"],
     listensTo: [],
@@ -123,6 +135,7 @@ export const MODULES: Record<ModuleKey, ModuleDefinition> = {
   analytics: {
     key: "analytics",
     name: "Analytics",
+    summary: "The principal\u2019s dashboards, drawn from whichever modules are on.",
     owns: ["dashboard_snapshots"],
     emits: [],
     listensTo: ["*"],

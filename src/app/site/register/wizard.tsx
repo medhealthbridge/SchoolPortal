@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useSearchParams } from "next/navigation";
-import { Banner, Button, Card, Field, Input, Select } from "@/components/ui";
+import { Banner, Button, Section, Field, Input, Select } from "@/components/ui";
 import { MODULES } from "@/lib/modules";
 import { TIER_LIST, peso } from "@/lib/pricing";
 import {
@@ -70,7 +70,7 @@ export default function RegisterWizard() {
 
   if (done) {
     return (
-      <Card title="Your school is live">
+      <Section title="Your school is live">
         <p className="text-sm">
           {schoolName} is ready at{" "}
           <a className="brand-text font-medium underline" href={done.url}>
@@ -79,25 +79,28 @@ export default function RegisterWizard() {
           . Sign in with {ownerEmail} to finish setup: school year and sections,
           students and staff, the timetable, invites, and the go-live checklist.
         </p>
-      </Card>
+      </Section>
     );
   }
 
   return (
     <div>
-      <ol className="mb-6 flex flex-wrap gap-2 text-xs">
+      {/* Four steps, in order, so the numbers are information. */}
+      <ol className="mb-8 flex flex-wrap border-b border-[var(--rule)] text-sm">
         {STEPS.map((label, i) => (
           <li
             key={label}
-            className={`rounded-full px-3 py-1 ${
+            aria-current={i === step ? "step" : undefined}
+            className={`-mb-px border-b-[3px] py-2 pr-5 ${
               i === step
-                ? "brand-bg text-white"
+                ? "border-[var(--accent)] font-medium text-[var(--ink)]"
                 : i < step
-                  ? "bg-brand-100 text-[#1b3049]"
-                  : "border border-black/15 text-black/55 dark:border-white/20 dark:text-white/55"
+                  ? "border-transparent text-[var(--brand)]"
+                  : "border-transparent text-[var(--ink-faint)]"
             }`}
           >
-            {i + 1}. {label}
+            <span className="w-narrow mr-1.5 font-semibold">{i + 1}</span>
+            {label}
           </li>
         ))}
       </ol>
@@ -109,7 +112,7 @@ export default function RegisterWizard() {
       )}
 
       {step === 0 && (
-        <Card
+        <Section
           title="Owner and email"
           subtitle="The email is verified before anything else."
         >
@@ -143,7 +146,7 @@ export default function RegisterWizard() {
             </Field>
 
             {!emailVerified && (
-              <div className="rounded-lg border border-black/10 p-4 dark:border-white/15">
+              <div className="ledger-page p-4">
                 {!codeSent ? (
                   <Button
                     type="button"
@@ -206,11 +209,11 @@ export default function RegisterWizard() {
               </Button>
             </div>
           </div>
-        </Card>
+        </Section>
       )}
 
       {step === 1 && (
-        <Card title="Your address" subtitle="Checked live; reserved words are blocked.">
+        <Section title="Your address" subtitle="Checked live; reserved words are blocked.">
           <Field label="Subdomain">
             <div className="flex items-center gap-2">
               <Input
@@ -218,7 +221,7 @@ export default function RegisterWizard() {
                 placeholder="stmary"
                 onChange={(e) => setSubdomain(e.target.value.toLowerCase())}
               />
-              <span className="shrink-0 text-sm text-black/60 dark:text-white/60">
+              <span className="shrink-0 text-sm text-[var(--ink-soft)]">
                 .{process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "yourapp.com"}
               </span>
             </div>
@@ -238,11 +241,11 @@ export default function RegisterWizard() {
               Continue
             </Button>
           </div>
-        </Card>
+        </Section>
       )}
 
       {step === 2 && (
-        <Card
+        <Section
           title="School details"
           subtitle="The type sets defaults such as level names and grading periods."
         >
@@ -256,7 +259,7 @@ export default function RegisterWizard() {
             </Field>
             <Field label="Branches" hint="One per line. The first is the main campus.">
               <textarea
-                className="w-full rounded-lg border border-black/15 bg-white px-3 py-2 text-sm dark:border-white/20 dark:bg-white/5"
+                className="w-full rounded-[2px] border border-[var(--rule)] border-b-2 border-b-[var(--ink-soft)] bg-[var(--paper-raised)] px-3 py-2 text-sm"
                 rows={3}
                 value={branchNames.join("\n")}
                 onChange={(e) => setBranchNames(e.target.value.split("\n"))}
@@ -274,19 +277,19 @@ export default function RegisterWizard() {
               Continue
             </Button>
           </div>
-        </Card>
+        </Section>
       )}
 
       {step === 3 && (
-        <Card title="Tier" subtitle="A free trial starts here. You can change tier later.">
+        <Section title="Tier" subtitle="A free trial starts here. You can change tier later.">
           <div className="grid gap-3">
             {TIER_LIST.map((t) => (
               <label
                 key={t.key}
                 className={`flex cursor-pointer items-start gap-3 rounded-lg border p-4 ${
                   tier === t.key
-                    ? "border-[var(--brand)] bg-brand-50"
-                    : "border-black/10 dark:border-white/15"
+                    ? "border-[var(--brand)] bg-[var(--brand-tint)]"
+                    : "border-[var(--rule)]"
                 }`}
               >
                 <input
@@ -298,9 +301,9 @@ export default function RegisterWizard() {
                 />
                 <span>
                   <span className="block font-medium">
-                    {t.name} · {peso(t.platformFeeCentavos)} per year
+                    {t.name}, {peso(t.platformFeeCentavos)} a year
                   </span>
-                  <span className="block text-sm text-black/65 dark:text-white/65">
+                  <span className="block text-sm text-[var(--ink-soft)]">
                     {t.modules.map((m) => MODULES[m].name).join(", ")}
                   </span>
                 </span>
@@ -335,7 +338,7 @@ export default function RegisterWizard() {
               {pending ? "Creating…" : "Create my school"}
             </Button>
           </div>
-        </Card>
+        </Section>
       )}
     </div>
   );

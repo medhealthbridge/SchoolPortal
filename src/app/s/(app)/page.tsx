@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { and, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq } from "drizzle-orm";
 import { withTenant } from "@/db";
 import {
   attendanceRecords,
   notifications,
   studentGuardians,
   students,
+  timetableSlots,
 } from "@/db/schema";
 import { requireUser } from "@/lib/guard";
 import { enabledModules } from "@/lib/tenant";
@@ -15,10 +16,10 @@ import {
   slotsForTeacher,
   unsubmittedSlots,
 } from "@/modules/attendance/queries";
-import { monthKey, prettyDate, prettyTime, todayIso } from "@/lib/format";
-import { Card, StatusBadge, Table } from "@/components/ui";
+import { prettyDate, prettyTime, todayIso } from "@/lib/format";
+import { Meta, Progress, Section, StatusBadge, Table, Tally } from "@/components/ui";
 
-export const metadata = { title: "Home" };
+export const metadata = { title: "Today" };
 
 export default async function Dashboard() {
   const { school, session } = await requireUser();
@@ -26,7 +27,6 @@ export default async function Dashboard() {
   const on = await enabledModules(school.id);
   const date = todayIso();
   const weekday = ((new Date().getDay() + 6) % 7) + 1;
-
   const attendanceOn = on.has("attendance");
 
   const data = await withTenant(school.id, async (tx) => ({
@@ -58,6 +58,16 @@ export default async function Dashboard() {
           )
           .limit(1)
       : [],
+    // Whether a timetable exists at all, which is a different question from
+    // whether anything is scheduled today.
+    timetableSize: Number(
+      (
+        await tx
+          .select({ n: count() })
+          .from(timetableSlots)
+          .where(eq(timetableSlots.schoolId, school.id))
+      )[0]?.n ?? 0,
+    ),
     alerts: await tx
       .select()
       .from(notifications)
@@ -83,123 +93,168 @@ export default async function Dashboard() {
       )
     : [];
 
+  const marksToday =
+    (data.summary?.present ?? 0) +
+    (data.summary?.absent ?? 0) +
+    (data.summary?.late ?? 0) +
+    (data.summary?.excused ?? 0);
+
+  const needsSetup =
+    perms.has("sections.manage") && attendanceOn && data.timetableSize === 0;
+  const noClassesToday = (data.summary?.slotsExpected ?? 0) === 0;
+
   return (
-    <div className="grid gap-5">
-      {data.summary && (
-        <Card title="Today" subtitle={`${prettyDate(date)} · ${school.name}`}>
-          <dl className="grid grid-cols-2 gap-4 sm:grid-cols-5">
-            {(
-              [
-                ["Present", data.summary.present],
-                ["Absent", data.summary.absent],
-                ["Late", data.summary.late],
-                ["Excused", data.summary.excused],
-                [
-                  "Classes submitted",
-                  `${data.summary.slotsSubmitted}/${data.summary.slotsExpected}`,
-                ],
-              ] as const
-            ).map(([label, value]) => (
-              <div key={label}>
-                <dt className="text-xs uppercase tracking-wide text-black/55 dark:text-white/55">
-                  {label}
-                </dt>
-                <dd className="text-2xl font-semibold tabular-nums">{value}</dd>
-              </div>
-            ))}
-          </dl>
-        </Card>
+    <>
+      <p className="w-wide text-[1.75rem] font-bold leading-none">
+        {new Date().toLocaleDateString("en-PH", {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+        })}
+      </p>
+
+      {needsSetup && (
+        <Section
+          title="Nothing is on the timetable yet"
+          subtitle="Attendance opens the right class by itself once the timetable is in. That is the last step before teachers can start."
+        >
+          <Link
+            href="/setup"
+            className="inline-block rounded-[2px] bg-[var(--accent)] px-4 py-2 text-sm font-medium text-[#5c3800]"
+          >
+            Finish setting up
+          </Link>
+        </Section>
+      )}
+
+      {data.summary && !needsSetup && (
+        <Section
+          title="The day so far"
+          subtitle={
+            noClassesToday
+              ? "Nothing is scheduled today, so there is nothing to take."
+              : marksToday === 0
+                ? "No class has submitted yet today."
+                : `${marksToday} marks recorded across the school.`
+          }
+        >
+          {marksToday > 0 && (
+            <div className="mb-7">
+              <Tally counts={data.summary} />
+            </div>
+          )}
+          {!noClassesToday && (
+            <Progress
+              done={data.summary.slotsSubmitted}
+              total={data.summary.slotsExpected}
+              label="classes have submitted"
+            />
+          )}
+          {noClassesToday && (
+            <p className="text-sm text-[var(--ink-soft)]">
+              The next school day picks up where this one left off.{" "}
+              <Link
+                href="/attendance/report"
+                className="font-medium text-[var(--brand)] underline underline-offset-2"
+              >
+                Look at the month so far
+              </Link>
+              .
+            </p>
+          )}
+        </Section>
       )}
 
       {data.missing.length > 0 && (
-        <Card title="Classes that have not submitted" subtitle="As of right now">
-          <Table head={["Time", "Class", "Teacher"]}>
+        <Section
+          title="Still to submit"
+          subtitle="Classes on today's timetable with nothing recorded."
+        >
+          <ul className="ledger-rows">
             {data.missing.map((s) => (
-              <tr key={s.id}>
-                <td className="py-2 pr-4 tabular-nums">{prettyTime(s.startsAt)}</td>
-                <td className="py-2 pr-4">
-                  {s.subjectName} · {s.sectionLevel} {s.sectionName}
-                </td>
-                <td className="py-2 pr-4">{s.teacherName}</td>
-              </tr>
+              <li
+                key={s.id}
+                className="flex flex-wrap items-baseline gap-x-5 gap-y-1 py-2.5 text-sm"
+              >
+                <span className="w-14 shrink-0 font-semibold">{prettyTime(s.startsAt)}</span>
+                <span className="font-medium">
+                  {s.subjectName}, {s.sectionLevel} {s.sectionName}
+                </span>
+                <span className="text-[var(--ink-soft)]">{s.teacherName}</span>
+              </li>
             ))}
-          </Table>
-        </Card>
+          </ul>
+        </Section>
       )}
 
       {data.mySlots.length > 0 && (
-        <Card title="Your classes today" subtitle="Opens the right class by itself.">
-          <ul className="divide-y divide-black/5 dark:divide-white/10">
+        <Section title="Your classes today" subtitle="Each one opens on its own seat plan.">
+          <ul className="ledger-rows">
             {data.mySlots.map((s) => (
               <li key={s.id}>
                 <Link
                   href={`/attendance/${s.id}`}
-                  className="flex items-center justify-between py-3 hover:opacity-80"
+                  className="flex items-baseline justify-between gap-5 py-3 hover:text-[var(--brand)]"
                 >
                   <span>
                     <span className="block font-medium">{s.subjectName}</span>
-                    <span className="block text-sm text-black/60 dark:text-white/60">
-                      {s.sectionLabel}
-                    </span>
+                    <Meta
+                      items={[s.sectionLabel, s.roomName].filter(Boolean) as string[]}
+                    />
                   </span>
-                  <span className="text-sm tabular-nums">{prettyTime(s.startsAt)}</span>
+                  <span className="shrink-0 font-semibold">{prettyTime(s.startsAt)}</span>
                 </Link>
               </li>
             ))}
           </ul>
-        </Card>
+        </Section>
       )}
 
       {watched.length > 0 && (
-        <Card
+        <Section
           title={data.mine.length ? "Your attendance" : "Your children"}
           subtitle={watched.map((s) => `${s.firstName} ${s.lastName}`).join(", ")}
         >
           {recent.length === 0 ? (
-            <p className="text-sm text-black/60 dark:text-white/60">
+            <p className="text-sm text-[var(--ink-soft)]">
               Nothing recorded yet this school year.
             </p>
           ) : (
-            <Table head={["Date", "Status"]}>
+            <Table head={["Date", "Mark"]}>
               {recent.map((r) => (
                 <tr key={r.id}>
-                  <td className="py-2 pr-4">{prettyDate(r.onDate)}</td>
-                  <td className="py-2 pr-4">
+                  <td className="py-2 pr-5">{prettyDate(r.onDate)}</td>
+                  <td className="py-2 pr-5">
                     <StatusBadge status={r.status} />
                   </td>
                 </tr>
               ))}
             </Table>
           )}
-        </Card>
+        </Section>
       )}
 
       {data.alerts.length > 0 && (
-        <Card title="Alerts">
-          <ul className="space-y-3 text-sm">
+        <Section title="Alerts">
+          <ul className="ledger-rows">
             {data.alerts.map((n) => (
-              <li key={n.id}>
+              <li key={n.id} className="py-2.5 text-sm">
                 <span className="font-medium">{n.title}</span>
-                <span className="block text-black/65 dark:text-white/65">{n.body}</span>
+                <span className="mt-0.5 block max-w-[72ch] text-[var(--ink-soft)]">{n.body}</span>
               </li>
             ))}
           </ul>
-        </Card>
+        </Section>
       )}
 
       {!attendanceOn && (
-        <Card title="Attendance is switched off">
-          <p className="text-sm">
-            The screens are hidden and the data stays. Switch it back on from
-            Modules and everything returns.
+        <Section title="Attendance is switched off">
+          <p className="max-w-[68ch] text-sm text-[var(--ink-soft)]">
+            Its screens are hidden and every record it holds is still there.
+            Switch it back on from Modules and all of it returns.
           </p>
-        </Card>
+        </Section>
       )}
-
-      <p className="text-xs text-black/45 dark:text-white/45">
-        Signed in as {session.name} · {session.roles.join(", ")} · reporting month{" "}
-        {monthKey()}
-      </p>
-    </div>
+    </>
   );
 }
