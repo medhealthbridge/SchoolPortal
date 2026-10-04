@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-50: #eef3f9;
+  --color-brand-100: #d6e2f0;
+  --color-brand-300: #8fadd0;
+  --color-brand-500: #4a73a0;
+  --color-brand: #2f557f;
+  --color-brand-700: #27456790;
+  --color-brand-900: #1b3049;
+
+  --color-accent: #ffa92d;
+  --color-accent-soft: #fff3df;
+
+  /* Attendance status. Never colour alone: each pairs with a letter badge. */
+  --color-present: #1f7a4d;
+  --color-absent: #b3261e;
+  --color-late: #a35c00;
+  --color-excused: #4a5a6a;
+}
+
+:root {
+  --brand: #2f557f;
+  --accent: #ffa92d;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: #f6f7f9;
+  color: #16202b;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* A school's own colours, set on <body> from the database. */
+.brand-bg { background-color: var(--brand); }
+.brand-text { color: var(--brand); }
+.accent-bg { background-color: var(--accent); }
+.accent-text { color: #5a3a00; }
+
+@media (prefers-color-scheme: dark) {
+  body {
+    background: #10161d;
+    color: #e7edf4;
+  }
+}
