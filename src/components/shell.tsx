@@ -6,6 +6,43 @@ import type { ReactNode } from "react";
 import { Avatar } from "./ui";
 import { ChevronRightIcon } from "./icons";
 
+/**
+ * The school's logo where it has one, its initials where it has not. The
+ * image is contained rather than cropped — a school's mark is not ours to
+ * trim — and sits on the same square so the header never shifts.
+ */
+function BrandMark({ brand, logoUrl }: { brand: string; logoUrl?: string | null }) {
+  if (logoUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element -- the file is on
+      // our own origin or the school's bucket; next/image would need both
+      // configured per school.
+      <img
+        src={logoUrl}
+        alt=""
+        aria-hidden
+        className="h-8 w-8 shrink-0 rounded-control border border-line bg-surface object-contain"
+      />
+    );
+  }
+  return (
+    <span
+      aria-hidden
+      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-control text-[13px] font-semibold"
+      style={{
+        background: "var(--school-badge, var(--primary))",
+        color: "var(--school-badge-fg, #FAFAFA)",
+      }}
+    >
+      {brand
+        .split(/\s+/)
+        .slice(0, 2)
+        .map((w) => w[0]?.toUpperCase())
+        .join("")}
+    </span>
+  );
+}
+
 export type NavItem = {
   href: string;
   label: string;
@@ -24,6 +61,7 @@ export type NavItem = {
 export function AppShell({
   brand,
   subBrand,
+  logoUrl,
   nav,
   user,
   signOut,
@@ -31,6 +69,8 @@ export function AppShell({
 }: {
   brand: string;
   subBrand: string;
+  /** The school's own logo, if it has uploaded one. Initials stand in. */
+  logoUrl?: string | null;
   nav: NavItem[];
   user: { name: string; detail: string };
   signOut: ReactNode;
@@ -57,20 +97,7 @@ export function AppShell({
         className="hidden shrink-0 flex-col gap-4 border-r border-line bg-ground p-3 lg:flex lg:w-60"
       >
         <div className="flex items-center gap-2.5 px-2 py-1.5">
-          <span
-            aria-hidden
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-control text-[13px] font-semibold"
-            style={{
-              background: "var(--school-badge, var(--primary))",
-              color: "var(--school-badge-fg, #FAFAFA)",
-            }}
-          >
-            {brand
-              .split(/\s+/)
-              .slice(0, 2)
-              .map((w) => w[0]?.toUpperCase())
-              .join("")}
-          </span>
+          <BrandMark brand={brand} logoUrl={logoUrl} />
           <span className="min-w-0">
             <span className="block truncate font-semibold leading-tight">{brand}</span>
             <span className="block truncate text-xs leading-tight text-muted">{subBrand}</span>

@@ -60,6 +60,22 @@ export function configProblems(env: NodeJS.ProcessEnv = process.env): ConfigProb
     });
   }
 
+  // The local storage driver writes to the machine's own disk. That is right
+  // for one box with a persistent volume and wrong everywhere else: on a
+  // serverless host the write fails, and behind two instances half the
+  // requests 404. Escapable, because a single VPS is a real way to run this.
+  const s3 = (env.S3_BUCKET ?? "") && (env.S3_ACCESS_KEY_ID ?? "");
+  if (!s3 && env.ALLOW_LOCAL_UPLOADS !== "yes") {
+    problems.push({
+      key: "S3_BUCKET",
+      says:
+        "not set, so uploaded logos go to this machine's disk — lost on a " +
+        "serverless host and missing from half the requests behind two " +
+        "instances. Set the S3_* variables, or ALLOW_LOCAL_UPLOADS=yes if " +
+        "this is one box with a persistent volume.",
+    });
+  }
+
   for (const key of ["EMAIL_API_KEY", "SMS_API_KEY"] as const) {
     const url = key === "EMAIL_API_KEY" ? "EMAIL_API_URL" : "SMS_API_URL";
     if (has(key) && !has(url)) {

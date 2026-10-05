@@ -67,7 +67,7 @@ npm run dev
 secret and its current code.
 
 ```bash
-npm test          # 75 tests, including the cross-tenant isolation gate
+npm test          # 105 tests, including the cross-tenant isolation gate
 npm run typecheck
 npm run build
 ```
@@ -221,6 +221,36 @@ outbox, which is what dev and the tests rely on — and it means a
 half-configured production sends nothing rather than something wrong. The
 admin Outbox shows held, sent, and failed with the provider's own reason.
 
+### Files
+
+A school's logo goes to `.uploads/` on this machine by default, served from
+`/uploads/<key>` — right for dev and for one VPS with a persistent volume, and
+wrong on a serverless host or behind two instances, so production says so
+unless `ALLOW_LOCAL_UPLOADS=yes`. Set the `S3_*` variables and any
+S3-compatible bucket takes over: AWS, Cloudflare R2, Spaces, Wasabi, MinIO.
+The PUT is signed in-process, so there is no SDK to install.
+
+Uploads are checked by their own first bytes, not by the name or the
+content-type the browser claimed, and SVG is refused however it is labelled —
+it is a document that can carry script, and a logo is not worth an XSS hole on
+a school's own subdomain. Every upload gets a fresh UUID, so a replaced logo
+is never served stale and the files can be cached forever.
+
+### Taking payment online
+
+Unset, the Pay button never appears and invoices are settled by transfer and
+recorded by hand, as the plan has it. Set `PAYMENTS_API_URL`,
+`PAYMENTS_API_KEY` and `PAYMENTS_WEBHOOK_SECRET` and a school can pay its
+invoice at the provider's own checkout. PayMongo, Xendit, Maya and Stripe all
+fit; the `PAYMENTS_*_PATH` variables say where each one keeps the checkout URL
+and the fields of a paid event.
+
+Only the signed webhook at `/api/payments/webhook` marks an invoice paid — a
+payer who reaches the thank-you page has not necessarily paid, and the browser
+is not a witness. The body is verified before it is parsed, an unsigned one
+gets a 404, and the provider's payment id is the idempotency key, so a retried
+delivery records the money once and still answers 200.
+
 ### The scheduled runner
 
 One endpoint runs everything on a timer — invoices, past-due, the event queue
@@ -244,8 +274,11 @@ restart and hold across instances. A correct password gives the budget back.
 
 ## Still not built
 
-- **A payment gateway.** Payments are recorded by hand, as the plan asks.
-- **Object storage** for logos and photos.
+- **Student photos.** The storage seam is there and the logo uses it; nothing
+  on a student record asks for a picture yet.
+- **Paying school fees online.** The gateway settles the platform's invoice to
+  a school. A parent still pays the cashier, which is what the plan asks for —
+  `src/modules/billing` records it.
 - **The data processing agreement, privacy notice and consent wording**, which
   the plan rightly sends to a Philippine privacy lawyer.
 
@@ -260,7 +293,7 @@ src/
   components/    the shared UI kit
   db/            schema, migrations, rls, seed
   lib/           guard, session, roles, modules, pricing, invoicing, events, offline,
-                 throttle, config, delivery, scheduled
+                 throttle, config, delivery, scheduled, storage, payments
   modules/
     attendance/  queries and submit — the first module, and the shape of the rest
     grades/      periods, class scores, the report card, a teacher's load
@@ -268,5 +301,6 @@ src/
     registrar/   the clearance check, which asks each module that is on
     community/   one screen and one action set, shared by SAO and Chaplain
 drizzle/         the versioned migrations, applied by npm run db:migrate
-tests/           isolation, attendance, billing, pricing, units, modules, hardening
+tests/           isolation, attendance, billing, pricing, units, modules,
+                 hardening, storage, payments
 ```

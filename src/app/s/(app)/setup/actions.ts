@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { and, eq } from "drizzle-orm";
 import { withTenant } from "@/db";
+import { schools } from "@/db/schema";
 import {
   branches,
   enrollments,
@@ -24,6 +25,8 @@ import { readSheet } from "@/lib/csv";
 import { deliver } from "@/lib/messaging";
 import { randomBytes } from "node:crypto";
 import type { Role } from "@/lib/roles";
+import { withPlatform } from "@/db";
+import { checkImage, keyFromUrl, put, remove } from "@/lib/storage";
 
 type ActionResult = { ok?: string; error?: string; issues?: string[] } | null;
 
@@ -391,4 +394,60 @@ export async function acceptInvite(token: string, name: string, password: string
     });
     return { ok: "Account created.", userId: user.id };
   });
+}
+
+
+/**
+ * The school's logo. It appears on the badge in every screen's corner, so it
+ * is the one upload a school makes before anything else.
+ *
+ * `schools` carries no school_id — it IS the school — so it has no row-level
+ * security and is written through withPlatform. The row is pinned to this
+ * school's id, which the guard already resolved from the subdomain.
+ */
+export async function saveLogo(_prev: ActionResult, form: FormData): Promise<ActionResult> {
+  const { school, session } = await requirePermission("school.manage");
+  const file = form.get("logo");
+
+  if (form.get("remove") === "yes") {
+    const old = keyFromUrl(school.logoUrl);
+    await withPlatform((tx) =>
+      tx.update(schools).set({ logoUrl: null }).where(eq(schools.id, school.id)),
+    );
+    if (old) await remove(old);
+    revalidatePath("/setup");
+    return { ok: "Logo removed. The badge shows the school's initials again." };
+  }
+
+  if (!(file instanceof File)) return { error: "Choose an image." };
+
+  const checked = await checkImage(file);
+  if (!checked.ok) return { error: checked.error };
+
+  let stored;
+  try {
+    stored = await put(`schools/${school.id}`, checked.bytes, checked.type, checked.ext);
+  } catch (err) {
+    console.error(err);
+    return { error: "The file could not be stored. Try again in a moment." };
+  }
+
+  const previous = keyFromUrl(school.logoUrl);
+  await withPlatform(async (tx) => {
+    await tx.update(schools).set({ logoUrl: stored.url }).where(eq(schools.id, school.id));
+    await audit(tx, {
+      schoolId: school.id,
+      actorUserId: session.userId,
+      actorLabel: session.name,
+      action: "school.logo_changed",
+      entity: "schools",
+      entityId: school.id,
+    });
+  });
+  // Only once the new one is saved: a failed write must not leave the school
+  // with no logo at all.
+  if (previous) await remove(previous);
+
+  revalidatePath("/setup");
+  return { ok: "Logo saved. It shows in the corner of every screen." };
 }

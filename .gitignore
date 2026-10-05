@@ -10,3 +10,6 @@ next-env.d.ts
 # smoke-test output
 /attendance.png
 /modules.png
+
+# uploads written by the local storage driver
+/.uploads

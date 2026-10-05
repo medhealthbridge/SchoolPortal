@@ -68,6 +68,7 @@ describe("configuration check", () => {
     APP_DATABASE_URL: "postgres://app_user@h/db",
     ROOT_DOMAIN: "school.example",
     PLATFORM_ADMIN_PASSWORD: "a-long-enough-password",
+    ALLOW_LOCAL_UPLOADS: "yes",
   };
 
   it("passes a sound configuration", () => {
@@ -87,6 +88,13 @@ describe("configuration check", () => {
   it("catches the example admin password and a short one", () => {
     expect(configProblems({ ...good, PLATFORM_ADMIN_PASSWORD: "admin12345" })).not.toEqual([]);
     expect(configProblems({ ...good, PLATFORM_ADMIN_PASSWORD: "short" })).not.toEqual([]);
+  });
+
+  it("objects to local uploads unless someone has said that is intended", () => {
+    const { ALLOW_LOCAL_UPLOADS: _off, ...without } = good;
+    expect(configProblems(without).map((p) => p.key)).toContain("S3_BUCKET");
+    const s3 = { ...without, S3_BUCKET: "b", S3_ACCESS_KEY_ID: "k" };
+    expect(configProblems(s3)).toEqual([]);
   });
 
   it("catches a half-configured provider, which would send nothing", () => {

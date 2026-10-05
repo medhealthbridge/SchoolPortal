@@ -109,13 +109,17 @@ export async function issueInvoices(period: string, dueInDays = 15) {
   return issued;
 }
 
-/** You record a bank or e-wallet transfer by hand; a gateway comes later. */
+/**
+ * One way in for both kinds of payment: a transfer an admin recorded by hand,
+ * and one the gateway's webhook reported. `adminId` is null for the second,
+ * because no person was involved.
+ */
 export async function recordPayment(args: {
   invoiceId: string;
   amountCentavos: number;
   method: string;
   reference?: string;
-  adminId: string;
+  adminId?: string | null;
   adminName: string;
   paidOn: string;
 }) {
@@ -133,7 +137,7 @@ export async function recordPayment(args: {
       amountCentavos: args.amountCentavos,
       method: args.method,
       reference: args.reference ?? null,
-      recordedByAdminId: args.adminId,
+      recordedByAdminId: args.adminId ?? null,
       paidOn: args.paidOn,
     });
 
@@ -161,6 +165,39 @@ export async function recordPayment(args: {
 
     return { ok: true as const };
   });
+}
+
+/**
+ * A payment the gateway reported. Providers retry a webhook until they get a
+ * 200, and a retry must not record the money twice — so the provider's own
+ * payment id is the key, and a second delivery of the same one is a no-op
+ * that still answers 200 so the provider stops asking.
+ */
+export async function recordGatewayPayment(args: {
+  invoiceId: string;
+  amountCentavos: number;
+  reference: string;
+}) {
+  const already = await withPlatform((tx) =>
+    tx
+      .select({ id: payments.id })
+      .from(payments)
+      .where(and(eq(payments.invoiceId, args.invoiceId), eq(payments.reference, args.reference)))
+      .limit(1),
+  );
+  if (already.length > 0) return { duplicate: true as const };
+
+  const outcome = await recordPayment({
+    invoiceId: args.invoiceId,
+    amountCentavos: args.amountCentavos,
+    method: "gateway",
+    reference: args.reference,
+    adminId: null,
+    adminName: "payment gateway",
+    paidOn: new Date().toISOString().slice(0, 10),
+  });
+  if ("error" in outcome) return { error: outcome.error };
+  return { duplicate: false as const };
 }
 
 /** Marks overdue invoices and flags their schools, without blocking anyone. */

@@ -35,7 +35,11 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  // /api/cron is excluded: the scheduled runner belongs to the platform, not
-  // to any one subdomain, so it must not be rewritten into a tenant's tree.
-  matcher: ["/((?!_next/|api/cron|favicon.ico|manifest.webmanifest|sw.js|icons/).*)"],
+  // Named one by one, not /api/* wholesale: a school's own API lives at
+  // /api/attendance/... and is rewritten into /s, which is how the phone
+  // reaches it. Only the platform's endpoints — the scheduled runner, the
+  // payment provider's webhook — and the stored files skip the rewrite.
+  matcher: [
+    "/((?!_next/|api/cron|api/payments|uploads/|favicon.ico|manifest.webmanifest|sw.js|icons/).*)",
+  ],
 };

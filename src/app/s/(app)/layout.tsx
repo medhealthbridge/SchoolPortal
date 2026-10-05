@@ -134,6 +134,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <AppShell
       brand={school.name}
       subBrand={school.subdomain}
+      logoUrl={school.logoUrl}
       nav={nav}
       user={{
         name: session.name,

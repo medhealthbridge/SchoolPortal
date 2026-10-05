@@ -31,6 +31,7 @@ import {
   addTimetableSlot,
   createSchoolYear,
   importStudents,
+  saveLogo,
 } from "./actions";
 
 export const metadata = { title: "Setup" };
@@ -159,6 +160,41 @@ export default async function SetupPage() {
             </li>
           ))}
         </ol>
+      </Section>
+
+      <Section
+        id="logo"
+        title="Logo"
+        subtitle={
+          school.logoUrl
+            ? "It shows in the corner of every screen."
+            : "Until there is one, the badge shows the school's initials."
+        }
+      >
+        <div className="flex flex-wrap items-start gap-6">
+          {school.logoUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={school.logoUrl}
+              alt={`${school.name} logo`}
+              className="h-20 w-20 rounded-control border border-line bg-surface object-contain"
+            />
+          )}
+          <div className="min-w-0 flex-1 basis-[18rem]">
+            <ActionForm action={saveLogo} submitLabel="Save logo" className="grid gap-3">
+              <Field label="Image" hint="PNG, JPEG or WebP, up to 2 MB. A square reads best.">
+                <Input type="file" name="logo" accept="image/png,image/jpeg,image/webp" required />
+              </Field>
+            </ActionForm>
+            {school.logoUrl && (
+              <div className="mt-3">
+                <ActionForm action={saveLogo} submitLabel="Remove logo" className="hidden">
+                  <input type="hidden" name="remove" value="yes" />
+                </ActionForm>
+              </div>
+            )}
+          </div>
+        </div>
       </Section>
 
       <Section

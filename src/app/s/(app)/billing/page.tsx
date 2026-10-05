@@ -16,6 +16,8 @@ import {
   Table,
 } from "@/components/ui";
 import { prettyDate } from "@/lib/format";
+import { configured as paymentsConfigured } from "@/lib/payments";
+import { PayButton } from "./pay";
 
 export const metadata = { title: "Billing" };
 
@@ -36,6 +38,9 @@ export default async function BillingPage() {
 
   const tier = TIERS[school.tier];
   const unpaid = data.invoices.filter((i) => i.status === "issued");
+  // No provider configured means no button, and the bank-transfer wording
+  // stays exactly as it was.
+  const online = paymentsConfigured();
 
   return (
     <>
@@ -79,7 +84,19 @@ export default async function BillingPage() {
             No invoices yet — your trial has not been billed.
           </p>
         ) : (
-          <Table head={["Period", "Students", "Platform fee", "Student fee", "Total", "Due", "Status"]}>
+          <Table
+            head={[
+              "Period",
+              "Students",
+              "Platform fee",
+              "Student fee",
+              "Total",
+              "Due",
+              "Status",
+              ...(online ? [""] : []),
+            ]}
+            minWidth={online ? 900 : 760}
+          >
             {data.invoices.map((i) => (
               <tr key={i.id}>
                 <td className="font-medium">{i.period}</td>
@@ -89,13 +106,21 @@ export default async function BillingPage() {
                 <td className="font-medium tabular-nums">{peso(i.totalCentavos)}</td>
                 <td>{prettyDate(i.dueOn)}</td>
                 <td><Pill tone={i.status === "paid" ? "ok" : "warn"}>{i.status}</Pill></td>
+                {online && (
+                  <td>
+                    {i.status === "issued" && (
+                      <PayButton invoiceId={i.id} amount={peso(i.totalCentavos)} />
+                    )}
+                  </td>
+                )}
               </tr>
             ))}
           </Table>
         )}
         <p className="px-5 py-4 text-muted sm:px-6">
-          Pay by bank transfer or e-wallet and send the reference; the platform
-          records it by hand for now.
+          {online
+            ? "Paying online clears the invoice as soon as the money lands. A bank transfer works too — send the reference and the platform records it."
+            : "Pay by bank transfer or e-wallet and send the reference; the platform records it by hand."}
         </p>
       </Section>
     </>

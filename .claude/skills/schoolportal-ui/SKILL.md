@@ -54,7 +54,9 @@ Two shells, both already built. Use them; do not invent a third.
   header carrying a breadcrumb and the page's one action, and content in a
   `max-w-[1080px]` column with `gap-6` between sections. Below `lg` the
   sidebar becomes a fixed bottom tab bar of at most five items, and the header
-  keeps the school name.
+  keeps the school name. The badge beside it is the school's uploaded logo
+  where there is one and its initials on `--school-badge` where there is not;
+  `BrandMark` in `shell.tsx` decides, so neither case needs handling again.
 - **Public site** (`src/app/site/layout.tsx`): a centred `max-w-[72rem]`
   column, no sidebar.
 - **Auth and standalone pages** (sign in, sign up, invite, on hold, offline):
