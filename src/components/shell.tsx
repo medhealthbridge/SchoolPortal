@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { Avatar } from "./ui";
 import { ChevronRightIcon } from "./icons";
+import { initialsOf } from "@/lib/brand";
 
 /**
  * The school's logo where it has one, its initials where it has not. The
@@ -34,11 +35,7 @@ function BrandMark({ brand, logoUrl }: { brand: string; logoUrl?: string | null 
         color: "var(--school-badge-fg, #FAFAFA)",
       }}
     >
-      {brand
-        .split(/\s+/)
-        .slice(0, 2)
-        .map((w) => w[0]?.toUpperCase())
-        .join("")}
+      {initialsOf(brand)}
     </span>
   );
 }

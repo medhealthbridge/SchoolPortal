@@ -15,6 +15,13 @@
       "when": 1791189905857,
       "tag": "0001_fee_items_nulls_not_distinct",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791210185261,
+      "tag": "0002_school_profile",
+      "breakpoints": true
     }
   ]
 }

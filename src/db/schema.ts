@@ -91,6 +91,10 @@ export const schools = pgTable(
     status: schoolStatus("status").notNull().default("trial"),
     tier: tierKey("tier").notNull().default("starter"),
     logoUrl: text("logo_url"),
+    /** Printed on the report card. Optional: a school fills these in Setup. */
+    address: text("address"),
+    /** The school's own line, not the owner's mobile above. */
+    phone: text("phone"),
     primaryColor: text("primary_color").notNull().default("#2F557F"),
     accentColor: text("accent_color").notNull().default("#FFA92D"),
     ownerName: text("owner_name").notNull(),

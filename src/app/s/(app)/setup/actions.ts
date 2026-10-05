@@ -27,6 +27,7 @@ import { randomBytes } from "node:crypto";
 import type { Role } from "@/lib/roles";
 import { withPlatform } from "@/db";
 import { checkImage, keyFromUrl, put, remove } from "@/lib/storage";
+import { parseProfile } from "@/lib/profile";
 
 type ActionResult = { ok?: string; error?: string; issues?: string[] } | null;
 
@@ -450,4 +451,54 @@ export async function saveLogo(_prev: ActionResult, form: FormData): Promise<Act
 
   revalidatePath("/setup");
   return { ok: "Logo saved. It shows in the corner of every screen." };
+}
+
+/**
+ * The school's name, address, phone and brand colour.
+ *
+ * The subdomain is deliberately not editable here: it is the school's
+ * address on the internet, every link it has ever sent points at it, and
+ * changing it is a platform-admin job rather than a form.
+ *
+ * As with the logo, `schools` has no school_id and so no row-level security;
+ * the update is pinned to the id the guard resolved from the subdomain.
+ */
+export async function saveProfile(_prev: ActionResult, form: FormData): Promise<ActionResult> {
+  const { school, session } = await requirePermission("school.manage");
+
+  const parsed = parseProfile({
+    name: form.get("name"),
+    address: form.get("address"),
+    phone: form.get("phone"),
+    primaryColor: form.get("primaryColor"),
+  });
+  if (!parsed.ok) return { error: parsed.error };
+  const next = parsed.value;
+
+  const before = {
+    name: school.name,
+    address: school.address,
+    phone: school.phone,
+    primaryColor: school.primaryColor,
+  };
+  if (JSON.stringify(before) === JSON.stringify(next)) {
+    return { ok: "Nothing changed." };
+  }
+
+  await withPlatform(async (tx) => {
+    await tx.update(schools).set(next).where(eq(schools.id, school.id));
+    await audit(tx, {
+      schoolId: school.id,
+      actorUserId: session.userId,
+      actorLabel: session.name,
+      action: "school.profile_changed",
+      entity: "schools",
+      entityId: school.id,
+      before,
+      after: next,
+    });
+  });
+
+  revalidatePath("/setup");
+  return { ok: "Profile saved. The name and colour show on every screen." };
 }

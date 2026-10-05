@@ -75,7 +75,7 @@ npm run dev
 secret and its current code.
 
 ```bash
-npm test          # 105 tests, including the cross-tenant isolation gate
+npm test          # 122 tests, including the cross-tenant isolation gate
 npm run typecheck
 npm run build
 ```
@@ -310,5 +310,5 @@ src/
     community/   one screen and one action set, shared by SAO and Chaplain
 drizzle/         the versioned migrations, applied by npm run db:migrate
 tests/           isolation, attendance, billing, pricing, units, modules,
-                 hardening, storage, payments
+                 hardening, storage, payments, profile
 ```

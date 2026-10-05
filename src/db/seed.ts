@@ -74,6 +74,8 @@ async function main() {
     students: 48,
     withAttendance: true,
     withModules: true,
+    address: "Rizal Avenue, Barangay San Roque, Cebu City",
+    phone: "(032) 255 0142",
   });
 
   const northgate = await createSchool({
@@ -123,6 +125,8 @@ type SeedArgs = {
   withAttendance: boolean;
   /** Fill the other modules too, so every screen has something on it. */
   withModules?: boolean;
+  address?: string;
+  phone?: string;
 };
 
 async function createSchool(args: SeedArgs) {
@@ -141,6 +145,8 @@ async function createSchool(args: SeedArgs) {
         ownerName: `${args.name} owner`,
         ownerEmail: `admin@${args.subdomain}.example`,
         ownerMobile: "+639170000000",
+        address: args.address ?? null,
+        phone: args.phone ?? null,
         emailVerifiedAt: new Date(),
         onboardingStep: 9,
         suspendedAt: args.status === "suspended" ? new Date() : null,

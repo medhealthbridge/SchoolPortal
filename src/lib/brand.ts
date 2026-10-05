@@ -29,3 +29,13 @@ export function brandStyle(color: string | null | undefined) {
     "--school-badge-fg": readableOn(background),
   } as React.CSSProperties;
 }
+
+/** "St. Mary Academy" → "SM": the badge a school has before it uploads a logo. */
+export function initialsOf(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? "")
+    .join("");
+}

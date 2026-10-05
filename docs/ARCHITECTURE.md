@@ -181,6 +181,11 @@ breaks offline attendance: a school's own API lives at `/api/attendance/…`
 and relies on the rewrite into `/s`. Only `api/cron`, `api/payments` and
 `uploads/` skip it.
 
+**`db:reset` must drop the `drizzle` schema as well as `public`.** Drizzle keeps
+its record of applied migrations in its own schema. Dropping only `public`
+left that record behind, so the next migrate believed the tables still existed
+and applied just the newest file onto an empty database.
+
 **`deliver()` writes a tenant row.** Call it inside a tenant transaction or
 pass `tx`, or RLS rejects the insert.
 
@@ -208,7 +213,7 @@ a screen looks colourful, something is wrong.
 ## Testing
 
 ```bash
-npm test     # 108 tests against a real Postgres, single fork
+npm test     # 122 tests against a real Postgres, single fork
 ```
 
 | File | Holds |
@@ -220,6 +225,7 @@ npm test     # 108 tests against a real Postgres, single fork
 | `payments.test.ts` | Checkout, webhook signatures, idempotent recording |
 | `hardening.test.ts` | Throttling, the boot check, the cron guard, delivery, and the `db`-vs-`withPlatform` scan |
 | `storage.test.ts` | Upload validation by magic bytes, path traversal, SigV4 |
+| `profile.test.ts` | The school profile's validation: names, phone shapes, colour as `#RRGGBB` only, and the badge's contrast |
 | `pricing.test.ts`, `units.test.ts` | Pure functions |
 
 Tests run against a real database rather than a mock, because what is being

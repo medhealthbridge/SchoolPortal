@@ -11,6 +11,7 @@ import {
   users,
 } from "@/db/schema";
 import { requirePermission } from "@/lib/guard";
+import { can } from "@/lib/roles";
 import Link from "next/link";
 import { ActionForm } from "@/components/action-form";
 import {
@@ -32,12 +33,17 @@ import {
   createSchoolYear,
   importStudents,
   saveLogo,
+  saveProfile,
 } from "./actions";
+import { BrandColorField } from "./brand-color";
 
 export const metadata = { title: "Setup" };
 
 export default async function SetupPage() {
-  const { school } = await requirePermission("sections.manage");
+  const { school, session } = await requirePermission("sections.manage");
+  // The registrar may build the timetable but may not rename the school, and a
+  // form whose save button is refused is worse than no form.
+  const mayEditSchool = can(session.roles, "school.manage");
 
   const data = await withTenant(school.id, async (tx) => {
     const [year] = await tx
@@ -162,40 +168,95 @@ export default async function SetupPage() {
         </ol>
       </Section>
 
-      <Section
-        id="logo"
-        title="Logo"
-        subtitle={
-          school.logoUrl
-            ? "It shows in the corner of every screen."
-            : "Until there is one, the badge shows the school's initials."
-        }
-      >
-        <div className="flex flex-wrap items-start gap-6">
-          {school.logoUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={school.logoUrl}
-              alt={`${school.name} logo`}
-              className="h-20 w-20 rounded-control border border-line bg-surface object-contain"
-            />
-          )}
-          <div className="min-w-0 flex-1 basis-[18rem]">
-            <ActionForm action={saveLogo} submitLabel="Save logo" className="grid gap-3">
-              <Field label="Image" hint="PNG, JPEG or WebP, up to 2 MB. A square reads best.">
-                <Input type="file" name="logo" accept="image/png,image/jpeg,image/webp" required />
+      {mayEditSchool && (
+        <>
+          <Section
+            id="profile"
+            title="School profile"
+            subtitle={`Your address on the internet is ${school.subdomain}, and it stays as it is.`}
+          >
+            <ActionForm action={saveProfile} submitLabel="Save profile" className="grid gap-4 sm:grid-cols-2">
+              <Field label="School name">
+                <Input
+                  name="name"
+                  defaultValue={school.name}
+                  required
+                  maxLength={120}
+                  autoComplete="organization"
+                />
               </Field>
-            </ActionForm>
-            {school.logoUrl && (
-              <div className="mt-3">
-                <ActionForm action={saveLogo} submitLabel="Remove logo" className="hidden">
-                  <input type="hidden" name="remove" value="yes" />
-                </ActionForm>
+              <Field label="Phone" hint="Optional. Shown with the address on report cards.">
+                <Input
+                  name="phone"
+                  type="tel"
+                  defaultValue={school.phone ?? ""}
+                  maxLength={30}
+                  autoComplete="tel"
+                  placeholder="(02) 8123 4567"
+                />
+              </Field>
+              <div className="sm:col-span-2">
+                <Field label="Address" hint="Optional. One line, as you would put it on a letter.">
+                  <Input
+                    name="address"
+                    defaultValue={school.address ?? ""}
+                    maxLength={240}
+                    autoComplete="street-address"
+                    placeholder="Rizal Avenue, Barangay San Roque, Cebu City"
+                  />
+                </Field>
               </div>
-            )}
-          </div>
-        </div>
-      </Section>
+              <div className="sm:col-span-2">
+                <Field
+                  label="Brand colour"
+                  hint="Colours the badge in the corner and on the sign-in page. The letters on it switch between light and dark so they stay readable."
+                >
+                  <BrandColorField
+                    name="primaryColor"
+                    initial={school.primaryColor}
+                    schoolName={school.name}
+                  />
+                </Field>
+              </div>
+            </ActionForm>
+          </Section>
+
+          <Section
+            id="logo"
+            title="Logo"
+            subtitle={
+              school.logoUrl
+                ? "It shows in the corner of every screen."
+                : "Until there is one, the badge shows the school's initials."
+            }
+          >
+            <div className="flex flex-wrap items-start gap-6">
+              {school.logoUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={school.logoUrl}
+                  alt={`${school.name} logo`}
+                  className="h-20 w-20 rounded-control border border-line bg-surface object-contain"
+                />
+              )}
+              <div className="min-w-0 flex-1 basis-[18rem]">
+                <ActionForm action={saveLogo} submitLabel="Save logo" className="grid gap-3">
+                  <Field label="Image" hint="PNG, JPEG or WebP, up to 2 MB. A square reads best.">
+                    <Input type="file" name="logo" accept="image/png,image/jpeg,image/webp" required />
+                  </Field>
+                </ActionForm>
+                {school.logoUrl && (
+                  <div className="mt-3">
+                    <ActionForm action={saveLogo} submitLabel="Remove logo" className="hidden">
+                      <input type="hidden" name="remove" value="yes" />
+                    </ActionForm>
+                  </div>
+                )}
+              </div>
+            </div>
+          </Section>
+        </>
+      )}
 
       <Section
         id="year"

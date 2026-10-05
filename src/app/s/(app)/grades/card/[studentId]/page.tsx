@@ -52,7 +52,17 @@ export default async function ReportCardPage({
     <>
       <PageHeader
         title={`${card.student.firstName} ${card.student.lastName}`}
-        meta={<Meta items={[card.student.studentNumber, "Report card"]} />}
+        meta={
+          <Meta
+            items={[
+              card.student.studentNumber,
+              "Report card",
+              school.name,
+              school.address,
+              school.phone,
+            ]}
+          />
+        }
         actions={
           card.general !== null ? (
             <Pill tone={passing ? "ok" : "warn"}>

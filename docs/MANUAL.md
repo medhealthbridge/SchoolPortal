@@ -78,6 +78,7 @@ ticks itself off as you go. Teachers cannot take attendance until it is done.
 | 5. Import your students | A CSV file, below | Setup → Import students |
 | 6. Build the timetable | Teacher, subject, section, room, day, start and end time. One row per class per day | Setup → Timetable |
 | 7. Invite your staff | Name, email, role | People |
+| Optional: your profile | Address, phone, brand colour, logo — see below | Setup → School profile |
 
 **Enrolment is per school year.** A student who transfers sections keeps last
 year's record exactly as it was; nothing is rewritten.
@@ -102,10 +103,32 @@ ST-2026-0002,Bea,Hernandez,Sampaguita
 - Every imported student gets an activation code and a parent code. Print
   them from the **Students** page.
 
-### Your logo
+### Your school's profile and logo
 
-Setup → Logo. A PNG, JPEG or WebP up to 2 MB; square reads best. It replaces
-your initials in the corner of every screen. SVG is refused on purpose — it is
+**Setup → School profile.** Only the school admin sees it; the registrar can
+build the timetable but cannot rename the school.
+
+| Field | What it does |
+| --- | --- |
+| School name | Shown in the corner of every screen, on the sign-in page, and on invoices |
+| Phone | Optional. Shown on report cards |
+| Address | Optional, one line as you would put it on a letter. Shown on report cards |
+| Brand colour | Colours the badge in the corner and on the sign-in page |
+
+Pick the colour from the box; the badge beside it shows exactly what you will
+get. **The letters on it switch between light and dark on their own**, so a
+pale yellow still reads. Colour is deliberately kept to the badge — the rest of
+the interface stays neutral so the attendance marks are the only colour on a
+page.
+
+Every change is recorded in the audit log with before and after. **Your
+address on the internet, `yourschool.<domain>`, cannot be changed here.** Every
+link the school has ever sent points at it; ask the platform admin if it truly
+must change.
+
+**Setup → Logo.** A PNG, JPEG or WebP up to 2 MB; square reads best. It
+replaces your initials in the corner of every screen, and once it is there the
+brand colour shows only on the sign-in page. SVG is refused on purpose — it is
 a file that can carry code, and a logo is not worth the risk.
 
 ### Switching modules on and off

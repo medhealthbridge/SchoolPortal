@@ -72,7 +72,7 @@ secret and the code valid at that moment.
 | `npm run db:generate` | Writes `drizzle/NNNN_*.sql` from a schema change |
 | `npm run db:migrate` | Applies migrations, grants and RLS |
 | `npm run db:seed` | Demo data |
-| `npm run db:reset` | Drops the public schema — destroys everything |
+| `npm run db:reset` | Drops the `public` and `drizzle` schemas — destroys everything, including the record of which migrations ran |
 | `npm run responsive` | 27 screens × 7 widths, fails on horizontal scroll |
 | `npm run smoke` | End-to-end against a running dev server |
 
@@ -392,7 +392,7 @@ Test a restore before you need one.
 
 ```bash
 npm run typecheck
-npm test                 # 108 tests, including the cross-tenant isolation gate
+npm test                 # 122 tests, including the cross-tenant isolation gate
 npm run build
 npm run responsive       # needs the dev server and a seeded database
 npm run smoke            # same
