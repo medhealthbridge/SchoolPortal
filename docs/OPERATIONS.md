@@ -195,6 +195,25 @@ touch the database. The school's *status* is checked server-side on every page
 and API route, so a suspension takes effect on the very next request even for a
 session that is already open.
 
+### On Vercel
+
+Add both the domain and its wildcard to the project (Settings → Domains), e.g.
+`schoolportal.example.com` and `*.schoolportal.example.com`. Vercel then asks
+for two things, shown beside each domain with the exact values:
+
+1. **Ownership**: one `TXT` record per domain, both at `_vercel.<your apex>`
+   (so two TXT records at the same name, with different values). This proves
+   the parent domain is yours.
+2. **Routing**: a wildcard certificate can only be issued if Vercel answers DNS
+   for the zone, so delegate the subdomain to Vercel with two `NS` records on
+   `schoolportal` (the part before your apex): `ns1.vercel-dns.com` and
+   `ns2.vercel-dns.com`. A plain `CNAME` is enough for the bare domain but
+   cannot cover the wildcard.
+
+Nothing under `*.vercel.app` can serve a school, because the host has to end in
+`.ROOT_DOMAIN` for the middleware to find the subdomain. Until DNS is in place
+only the public site answers there.
+
 ---
 
 ## The database
