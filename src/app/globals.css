@@ -1,138 +1,193 @@
 @import "tailwindcss";
 
 /*
- * SchoolPortal is a class record book.
+ * SchoolPortal's tokens. Every value here is documented in
+ * .claude/skills/schoolportal-ui/reference/tokens.md — change them together.
  *
- * Every structural device here comes from the paper form it replaces —
- * DepEd's School Form 2: a ruled grid, a narrow left margin for the student
- * number, condensed labels squeezed into column heads, and a letter code in
- * every cell. Sections are separated by rules, never by floating cards, and
- * nothing casts a shadow: paper does not hover.
+ * Neutral greys, white cards on a near-white ground, one near-black for every
+ * primary action, and colour kept for the four attendance marks. If a screen
+ * looks colourful, something is wrong.
  */
 
-@theme {
-  /* Ledger paper: the pale green of an accounting pad, not cream. */
-  --color-paper: #f1f4ec;
-  --color-paper-raised: #fbfcf8;
-  --color-paper-sunken: #e7ebe1;
-
-  /* Ink is the brand navy taken to its darkest, never a tinted black. */
-  --color-ink: #16283d;
-  --color-ink-soft: #4a5d72;
-  --color-ink-faint: #7f8d9b;
-
-  --color-rule: #ccd5c5;
-  --color-rule-soft: #e0e6da;
-
-  --color-brand: #2f557f;
-  --color-brand-deep: #1d3a5c;
-  --color-brand-tint: #dde6f1;
-
-  --color-accent: #ffa92d;
-  --color-accent-tint: #fff0d7;
-  --color-accent-ink: #7a4b00;
-
-  /* Attendance. Present is quiet so the exceptions carry the eye. */
-  --color-present: #2e6f4e;
-  --color-absent: #b3261e;
-  --color-late: #a96800;
-  --color-excused: #5a6b7b;
-
-  --font-sans: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
-}
-
 :root {
-  --brand: #2f557f;
-  --accent: #ffa92d;
+  /* Neutrals */
+  --ground: #fafafa;
+  --surface: #ffffff;
+  --subtle: #f5f5f5;
+  --hover: #f0f0f0;
+  --line: #e5e5e5;
+  --line-strong: #d4d4d4;
+  --ring: #a1a1a1;
+  --muted: #737373;
+  --muted-strong: #525252;
+  --primary: #171717;
+  --primary-hover: #000000;
+  --ink: #0a0a0a;
 
-  --paper: var(--color-paper);
-  --paper-raised: var(--color-paper-raised);
-  --paper-sunken: var(--color-paper-sunken);
-  --ink: var(--color-ink);
-  --ink-soft: var(--color-ink-soft);
-  --ink-faint: var(--color-ink-faint);
-  --rule: var(--color-rule);
-  --rule-soft: var(--color-rule-soft);
-  --brand-tint: var(--color-brand-tint);
-  --accent-tint: var(--color-accent-tint);
+  /* Attendance marks: soft (a chip) and solid (the chosen segment) */
+  --present-bg: #ffffff;
+  --present-line: #e5e5e5;
+  --present-fg: #0a0a0a;
+  --present-solid: #171717;
+  --present-solid-fg: #fafafa;
+
+  --absent-bg: #fef2f2;
+  --absent-line: #fca5a5;
+  --absent-fg: #b91c1c;
+  --absent-solid: #dc2626;
+  --absent-solid-fg: #ffffff;
+
+  --late-bg: #fffbeb;
+  --late-line: #fcd34d;
+  --late-fg: #92400e;
+  --late-solid: #fde68a;
+  --late-solid-fg: #451a03;
+
+  --excused-bg: #f5f3ff;
+  --excused-line: #c4b5fd;
+  --excused-fg: #5b21b6;
+  --excused-solid: #6d28d9;
+  --excused-solid-fg: #ffffff;
+
+  /* The same four in a proportional bar: lightness differs, not only hue */
+  --bar-present: #171717;
+  --bar-late: #f59e0b;
+  --bar-absent: #dc2626;
+  --bar-excused: #c4b5fd;
+
+  /* Other states */
+  --ok: #15803d;
+  --ok-bg: #f0fdf4;
+  --ok-line: #bbf7d0;
+  --ok-dot: #16a34a;
+  --warn: #92400e;
+  --warn-bg: #fffbeb;
+  --warn-line: #fcd34d;
+  --danger: #b91c1c;
+  --danger-bg: #fef2f2;
+  --danger-line: #fca5a5;
+  --danger-icon: #e7000b;
+
+  /* Shape and depth */
+  --r-card: 14px;
+  --r-panel: 10px;
+  --r-control: 8px;
+  --r-pill: 9999px;
+  --shadow-card: 0 1px 3px rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-control: 0 1px 2px rgb(0 0 0 / 0.05);
+
+  /* The page gutter, the same on every shell */
+  --gutter: clamp(16px, 3vw, 24px);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --paper: #10202e;
-    --paper-raised: #16293a;
-    --paper-sunken: #0b1823;
-    --ink: #e8efe6;
-    --ink-soft: #a9bbc9;
-    --ink-faint: #76889a;
-    --rule: #294157;
-    --rule-soft: #1e3245;
-    --brand-tint: #1c3450;
-    --accent-tint: #3a2a0d;
+@theme inline {
+  --color-ground: var(--ground);
+  --color-surface: var(--surface);
+  --color-subtle: var(--subtle);
+  --color-hover: var(--hover);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-muted: var(--muted);
+  --color-muted-strong: var(--muted-strong);
+  --color-primary: var(--primary);
+  --color-ink: var(--ink);
+
+  --color-ok: var(--ok);
+  --color-ok-bg: var(--ok-bg);
+  --color-ok-line: var(--ok-line);
+  --color-warn: var(--warn);
+  --color-warn-bg: var(--warn-bg);
+  --color-warn-line: var(--warn-line);
+  --color-danger: var(--danger);
+  --color-danger-bg: var(--danger-bg);
+  --color-danger-line: var(--danger-line);
+
+  --radius-card: var(--r-card);
+  --radius-panel: var(--r-panel);
+  --radius-control: var(--r-control);
+
+  --shadow-card: var(--shadow-card);
+  --shadow-control: var(--shadow-control);
+
+  --font-sans: var(--font-geist), "Segoe UI", system-ui, sans-serif;
+}
+
+/*
+ * These element rules live in @layer base on purpose. An unlayered rule beats
+ * every layered one in the cascade, so a bare `a { color }` here would
+ * override `text-…` on every link button.
+ */
+@layer base {
+  html {
+    background: var(--ground);
+  }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-size: 14px;
+    line-height: 1.45;
+    font-variant-numeric: tabular-nums;
+    -webkit-text-size-adjust: 100%;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button {
+    font: inherit;
+    cursor: pointer;
+  }
+
+  a {
+    color: var(--primary);
+  }
+
+  a:hover {
+    color: var(--ink);
+  }
+
+  /* One focus ring, visible on the white surface and on the near-black button. */
+  :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+    outline: 3px solid var(--ring);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  /* A mobile text input under 16px makes iOS Safari zoom the page. */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  @media (min-width: 640px) {
+    input,
+    select,
+    textarea {
+      font-size: 14px;
+    }
   }
 }
 
-html {
-  background: var(--paper);
-}
-
-body {
-  background: var(--paper);
-  color: var(--ink);
-  font-variant-numeric: tabular-nums;
-  -webkit-text-size-adjust: 100%;
-  -webkit-font-smoothing: antialiased;
-}
-
-/* The width axis does the work two typefaces usually would. */
-.w-wide {
-  font-variation-settings: "wdth" 118;
-  letter-spacing: -0.018em;
-}
-.w-narrow {
-  font-variation-settings: "wdth" 86;
-}
-
-/* A section head: the rule is the container. */
-.ledger-rule {
-  border-top: 2px solid var(--brand);
-}
-.ledger-hair {
-  border-top: 1px solid var(--rule);
-}
-
-/* Rows of a record: hairline between, nothing around. */
-.ledger-rows > * + * {
-  border-top: 1px solid var(--rule-soft);
-}
-
-/* A bound page: used only where a true container is needed. */
-.ledger-page {
-  background: var(--paper-raised);
-  border: 1px solid var(--rule);
-  border-left: 3px solid var(--brand);
-}
-
-.brand-bg {
-  background-color: var(--brand);
-}
-.brand-text {
-  color: var(--brand);
-}
-@media (prefers-color-scheme: dark) {
-  .brand-text {
-    color: #8fb3dc;
-  }
-}
-.accent-bg {
-  background-color: var(--accent);
-}
-
-/* Focus has to survive on paper and on the navy masthead alike. */
-:where(a, button, input, select, textarea, [tabindex]):focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-  border-radius: 1px;
+/*
+ * Deliberately NOT absolutely positioned. An absolute box inside a
+ * horizontally scrolled table has the initial containing block, so its static
+ * position sits past the scrollport and stretches the whole page sideways.
+ * Staying in flow at 1px costs nothing and cannot escape.
+ */
+.sr-only {
+  /* `position` has to be declared, not merely omitted: Tailwind ships its own
+     absolutely positioned .sr-only, and the cascade resolves per property. */
+  position: static;
+  display: inline-block;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  vertical-align: middle;
 }
 
 @media (prefers-reduced-motion: reduce) {

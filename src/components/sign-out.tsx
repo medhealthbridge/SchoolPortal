@@ -15,7 +15,7 @@ export function SignOutButton({ action }: { action: () => Promise<Navigation> })
           window.location.assign(goTo);
         })
       }
-      className="shrink-0 rounded-[2px] border border-white/35 px-2.5 py-1 text-[0.8125rem] text-white hover:bg-white/10 disabled:opacity-50"
+      className="h-11 shrink-0 rounded-control border border-line bg-surface px-3 text-sm font-medium text-ink shadow-control hover:bg-subtle disabled:opacity-50 lg:h-9 lg:w-full"
     >
       {pending ? "Signing out" : "Sign out"}
     </button>

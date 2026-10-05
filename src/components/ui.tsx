@@ -1,52 +1,82 @@
 import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
+import { AlertIcon, CheckIcon, InfoIcon, OfflineIcon } from "./icons";
 
 /**
- * The kit is a record book, not a dashboard.
+ * The SchoolPortal kit. The system it implements is documented in
+ * .claude/skills/schoolportal-ui — read that before adding to this file.
  *
- * A Section is a 2px rule with its name beneath it — the rule is the
- * container, so nothing floats and nothing casts a shadow. A Panel is the one
- * exception: a bound page, used where content genuinely needs an edge.
- * Documents keep square corners; controls get 2px, because they are touched.
+ * Neutral greys, white cards on a near-white ground, one near-black for every
+ * primary action, and colour kept for the four attendance marks.
  */
 
+/* ------------------------------------------------------------------ *
+ * Page furniture
+ * ------------------------------------------------------------------ */
+
+export function PageHeader({
+  title,
+  meta,
+  actions,
+}: {
+  title: ReactNode;
+  meta?: ReactNode;
+  actions?: ReactNode;
+}) {
+  return (
+    <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+      <div className="min-w-0">
+        <h1 className="text-2xl font-semibold leading-tight tracking-[-0.02em]">{title}</h1>
+        {meta && <p className="mt-1 text-muted">{meta}</p>}
+      </div>
+      {actions && <div className="flex shrink-0 flex-wrap gap-2">{actions}</div>}
+    </div>
+  );
+}
+
+/**
+ * The workhorse surface. `flush` drops the body padding so a table can meet
+ * the card's edges.
+ */
 export function Section({
   title,
   subtitle,
   children,
   actions,
+  flush = false,
   id,
 }: {
   title?: ReactNode;
   subtitle?: ReactNode;
   children: ReactNode;
   actions?: ReactNode;
+  flush?: boolean;
   id?: string;
 }) {
   return (
-    <section id={id} className="ledger-rule min-w-0 pt-3">
+    <section
+      id={id}
+      className="min-w-0 rounded-card border border-line bg-surface shadow-card"
+    >
       {(title || actions) && (
-        <header className="mb-4 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+        <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 px-5 pb-4 pt-5 sm:px-6">
           <div className="min-w-0">
-            {title && (
-              <h2 className="w-wide text-[1.0625rem] font-semibold leading-tight text-[var(--ink)]">
-                {title}
-              </h2>
-            )}
+            {title && <h2 className="text-base font-semibold leading-none">{title}</h2>}
             {subtitle && (
-              <p className="mt-1 max-w-[62ch] text-sm leading-snug text-[var(--ink-soft)]">
-                {subtitle}
-              </p>
+              <p className="mt-1.5 max-w-[70ch] text-muted">{subtitle}</p>
             )}
           </div>
-          {actions && <div className="shrink-0">{actions}</div>}
+          {actions && <div className="flex shrink-0 flex-wrap gap-2">{actions}</div>}
         </header>
       )}
-      {children}
+      <div className={flush ? "" : `px-5 pb-5 sm:px-6 ${title || actions ? "" : "pt-5"}`}>
+        {children}
+      </div>
     </section>
   );
 }
 
+/** A card with no header, for a sign-in form or a standalone message. */
 export function Panel({
   children,
   className = "",
@@ -54,94 +84,102 @@ export function Panel({
   children: ReactNode;
   className?: string;
 }) {
-  return <div className={`ledger-page p-5 ${className}`}>{children}</div>;
+  return (
+    <div
+      className={`rounded-card border border-line bg-surface p-5 shadow-card sm:p-6 ${className}`}
+    >
+      {children}
+    </div>
+  );
 }
 
-/**
- * Meta items divided by a hairline, the way a form divides its columns. The
- * divider trails its item rather than leading the next, so a wrap leaves the
- * rule at the end of a line instead of dangling at the start of one.
- */
+/** Secondary facts on one line, in the product's own separator. */
 export function Meta({ items }: { items: ReactNode[] }) {
   const shown = items.filter(Boolean);
   return (
-    <span className="flex flex-wrap items-center gap-y-0.5 text-sm text-[var(--ink-soft)]">
+    <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-muted">
       {shown.map((item, i) => (
-        <span key={i} className="inline-flex items-center">
+        <span key={i} className="inline-flex items-center gap-2">
+          {i > 0 && <span aria-hidden>·</span>}
           {item}
-          {i < shown.length - 1 && (
-            <span
-              aria-hidden
-              className="mx-3 inline-block h-3.5 w-px bg-[var(--rule)]"
-            />
-          )}
         </span>
       ))}
     </span>
   );
 }
 
+/* ------------------------------------------------------------------ *
+ * Controls
+ * ------------------------------------------------------------------ */
+
 const buttonBase =
-  "inline-flex items-center justify-center gap-2 rounded-[2px] px-4 py-2 text-sm font-medium transition-colors disabled:opacity-45 disabled:cursor-not-allowed";
+  "inline-flex items-center justify-center gap-2 rounded-control px-4 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50";
+
+const buttonSizes = { md: "h-11", lg: "h-12 text-[15px]", sm: "h-9 px-3" };
+
+const buttonVariants = {
+  primary: "bg-primary text-[#FAFAFA] hover:bg-black",
+  secondary: "border border-line bg-surface text-ink shadow-control hover:bg-subtle",
+  danger: "bg-[var(--absent-solid)] text-white hover:brightness-95",
+  ghost: "text-ink hover:bg-subtle",
+};
 
 export function Button({
   variant = "primary",
+  size = "md",
   className = "",
   ...props
 }: ComponentProps<"button"> & {
-  variant?: "primary" | "accent" | "ghost" | "danger";
+  variant?: keyof typeof buttonVariants;
+  size?: keyof typeof buttonSizes;
 }) {
-  const styles = {
-    primary: "bg-[var(--brand)] text-white hover:bg-[#25456a]",
-    accent: "bg-[var(--accent)] text-[#5c3800] hover:bg-[#f09a1a]",
-    ghost:
-      "border border-[var(--ink-soft)] text-[var(--ink)] hover:bg-[var(--paper-sunken)]",
-    danger: "bg-[#b3261e] text-white hover:bg-[#95201a]",
-  }[variant];
-  return <button {...props} className={`${buttonBase} ${styles} ${className}`} />;
+  return (
+    <button
+      {...props}
+      className={`${buttonBase} ${buttonSizes[size]} ${buttonVariants[variant]} ${className}`}
+    />
+  );
 }
 
 export function LinkButton({
   variant = "primary",
+  size = "md",
   className = "",
   ...props
-}: ComponentProps<typeof Link> & { variant?: "primary" | "accent" | "ghost" }) {
-  const styles = {
-    primary: "bg-[var(--brand)] text-white hover:bg-[#25456a]",
-    accent: "bg-[var(--accent)] text-[#5c3800] hover:bg-[#f09a1a]",
-    ghost:
-      "border border-[var(--ink-soft)] text-[var(--ink)] hover:bg-[var(--paper-sunken)]",
-  }[variant];
-  return <Link {...props} className={`${buttonBase} ${styles} ${className}`} />;
+}: ComponentProps<typeof Link> & {
+  variant?: keyof typeof buttonVariants;
+  size?: keyof typeof buttonSizes;
+}) {
+  return (
+    <Link
+      {...props}
+      className={`${buttonBase} ${buttonSizes[size]} ${buttonVariants[variant]} no-underline ${className}`}
+    />
+  );
 }
 
 export function Field({
   label,
   hint,
   children,
+  htmlFor,
 }: {
   label: string;
   hint?: ReactNode;
   children: ReactNode;
+  htmlFor?: string;
 }) {
   return (
-    <label className="block">
-      <span className="w-narrow mb-1 block text-[0.8125rem] font-medium tracking-[0.01em] text-[var(--ink-soft)]">
-        {label}
-      </span>
+    <label htmlFor={htmlFor} className="block">
+      <span className="mb-1.5 block text-sm font-medium">{label}</span>
       {children}
-      {hint && (
-        <span className="mt-1 block max-w-[52ch] text-xs leading-snug text-[var(--ink-faint)]">
-          {hint}
-        </span>
-      )}
+      {hint && <span className="mt-1.5 block max-w-[54ch] text-[13px] text-muted">{hint}</span>}
     </label>
   );
 }
 
-/* An input is a ruled blank to write on, underlined rather than boxed. */
 export const inputClass =
-  "w-full rounded-[2px] border border-[var(--rule)] border-b-2 border-b-[var(--ink-soft)] bg-[var(--paper-raised)] px-3 py-2 text-sm text-[var(--ink)] outline-none placeholder:text-[var(--ink-faint)] focus:border-b-[var(--brand)]";
+  "h-11 w-full rounded-control border border-line-strong bg-surface px-3 text-ink shadow-control outline-none placeholder:text-muted";
 
 export function Input(props: ComponentProps<"input">) {
   return <input {...props} className={`${inputClass} ${props.className ?? ""}`} />;
@@ -152,79 +190,229 @@ export function Select(props: ComponentProps<"select">) {
 }
 
 export function Textarea(props: ComponentProps<"textarea">) {
-  return <textarea {...props} className={`${inputClass} ${props.className ?? ""}`} />;
+  return (
+    <textarea
+      {...props}
+      className={`${inputClass} h-auto min-h-[88px] py-2 ${props.className ?? ""}`}
+    />
+  );
 }
 
-/** Column heads are condensed, as they are on a form that must fit them. */
-export function Table({ head, children }: { head: ReactNode[]; children: ReactNode }) {
+/** A two or three way view switch. */
+export function Segmented({
+  options,
+  current,
+}: {
+  options: { href: string; label: string; key: string }[];
+  current: string;
+}) {
   return (
-    <div className="-mx-1 overflow-x-auto px-1">
-      <table className="w-full min-w-full text-sm">
+    <div
+      className="grid gap-0 rounded-panel bg-subtle p-[3px]"
+      style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
+    >
+      {options.map((o) => {
+        const on = o.key === current;
+        return (
+          <Link
+            key={o.key}
+            href={o.href}
+            aria-current={on ? "page" : undefined}
+            className={`flex h-10 items-center justify-center rounded-control text-sm font-medium no-underline ${
+              on ? "bg-surface text-ink shadow-card" : "text-muted-strong"
+            }`}
+          >
+            {o.label}
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * Data
+ * ------------------------------------------------------------------ */
+
+/**
+ * Wrap in `<Section flush>`; the scroll box keeps a wide table inside the
+ * card instead of stretching the page.
+ */
+export function Table({
+  head,
+  children,
+  minWidth = 560,
+}: {
+  head: ReactNode[];
+  children: ReactNode;
+  minWidth?: number;
+}) {
+  return (
+    <div className="overflow-x-auto border-t border-line">
+      <table
+        className="w-full border-collapse text-sm"
+        style={{ minWidth: `${minWidth}px` }}
+      >
         <thead>
-          <tr className="border-b border-[var(--ink-soft)] text-left align-bottom">
+          <tr className="text-left text-muted">
             {head.map((h, i) => (
               <th
                 key={i}
-                className="w-narrow pb-1.5 pr-5 text-[0.8125rem] font-medium text-[var(--ink-soft)]"
+                scope="col"
+                className="h-10 border-b border-line px-3 font-medium first:pl-5 last:pr-5 sm:first:pl-6 sm:last:pr-6"
               >
                 {h}
               </th>
             ))}
           </tr>
         </thead>
-        <tbody className="[&>tr]:border-b [&>tr]:border-[var(--rule-soft)]">{children}</tbody>
+        <tbody className="[&>tr>*]:border-b [&>tr>*]:border-line [&>tr>*]:px-3 [&>tr>*]:py-3 [&>tr>*:first-child]:pl-5 [&>tr>*:last-child]:pr-5 sm:[&>tr>*:first-child]:pl-6 sm:[&>tr>*:last-child]:pr-6 [&>tr:last-child>*]:border-b-0">
+          {children}
+        </tbody>
       </table>
     </div>
   );
 }
 
-export function Banner({
-  tone = "info",
+export function Pill({
+  tone = "neutral",
   children,
 }: {
-  tone?: "info" | "warn" | "danger";
+  tone?: "neutral" | "ok" | "warn" | "danger" | "solid";
   children: ReactNode;
 }) {
-  const edge = {
-    info: "var(--brand)",
-    warn: "var(--color-late)",
-    danger: "var(--color-absent)",
+  const styles = {
+    neutral: "border border-line bg-surface text-ink",
+    ok: "border border-ok-line bg-ok-bg text-ok",
+    warn: "border border-warn-line bg-warn-bg text-warn",
+    danger: "border border-danger-line bg-danger-bg text-danger",
+    solid: "bg-primary text-[#FAFAFA]",
   }[tone];
   return (
+    <span
+      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-[var(--r-pill)] px-2 py-0.5 text-xs font-medium ${styles}`}
+    >
+      {children}
+    </span>
+  );
+}
+
+export function Avatar({ name, size = 28 }: { name: string; size?: number }) {
+  const initials = name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? "")
+    .join("");
+  return (
+    <span
+      aria-hidden
+      className="inline-flex shrink-0 items-center justify-center rounded-[var(--r-pill)] bg-subtle font-semibold"
+      style={{ width: size, height: size, fontSize: Math.round(size * 0.39) }}
+    >
+      {initials}
+    </span>
+  );
+}
+
+/** A label, a number, and a caption that states a fact. */
+export function StatTile({
+  label,
+  value,
+  caption,
+  pill,
+}: {
+  label: ReactNode;
+  value: ReactNode;
+  caption?: ReactNode;
+  pill?: ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-2 rounded-card border border-line bg-surface p-5 shadow-card">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-muted">{label}</span>
+        {pill}
+      </div>
+      <div className="text-[30px] font-semibold leading-none tracking-[-0.02em]">{value}</div>
+      {caption && <div className="text-[13px] text-muted">{caption}</div>}
+    </div>
+  );
+}
+
+export function StatGrid({ children }: { children: ReactNode }) {
+  return (
     <div
-      role="status"
-      className="bg-[var(--paper-raised)] py-2.5 pl-4 pr-4 text-sm leading-snug text-[var(--ink)]"
-      style={{ borderLeft: `3px solid ${edge}` }}
+      className="grid gap-4"
+      style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(180px, 100%), 1fr))" }}
     >
       {children}
     </div>
   );
 }
 
-/**
- * Attendance is never colour alone: every status carries its letter, exactly
- * as it is written into a record book.
- */
+/* ------------------------------------------------------------------ *
+ * Attendance
+ * ------------------------------------------------------------------ */
+
 export const STATUS_META = {
-  present: { letter: "P", label: "Present", color: "var(--color-present)" },
-  absent: { letter: "A", label: "Absent", color: "var(--color-absent)" },
-  late: { letter: "L", label: "Late", color: "var(--color-late)" },
-  excused: { letter: "E", label: "Excused", color: "var(--color-excused)" },
+  present: { letter: "P", label: "Present" },
+  absent: { letter: "A", label: "Absent" },
+  late: { letter: "L", label: "Late" },
+  excused: { letter: "E", label: "Excused" },
 } as const;
 
 export type AttendanceStatus = keyof typeof STATUS_META;
 
 export const STATUS_ORDER: AttendanceStatus[] = ["present", "absent", "late", "excused"];
 
+export const STATUS_STYLE: Record<
+  AttendanceStatus,
+  { bg: string; line: string; fg: string; solid: string; solidFg: string; bar: string }
+> = {
+  present: {
+    bg: "var(--present-bg)",
+    line: "var(--present-line)",
+    fg: "var(--present-fg)",
+    solid: "var(--present-solid)",
+    solidFg: "var(--present-solid-fg)",
+    bar: "var(--bar-present)",
+  },
+  absent: {
+    bg: "var(--absent-bg)",
+    line: "var(--absent-line)",
+    fg: "var(--absent-fg)",
+    solid: "var(--absent-solid)",
+    solidFg: "var(--absent-solid-fg)",
+    bar: "var(--bar-absent)",
+  },
+  late: {
+    bg: "var(--late-bg)",
+    line: "var(--late-line)",
+    fg: "var(--late-fg)",
+    solid: "var(--late-solid)",
+    solidFg: "var(--late-solid-fg)",
+    bar: "var(--bar-late)",
+  },
+  excused: {
+    bg: "var(--excused-bg)",
+    line: "var(--excused-line)",
+    fg: "var(--excused-fg)",
+    solid: "var(--excused-solid)",
+    solidFg: "var(--excused-solid-fg)",
+    bar: "var(--bar-excused)",
+  },
+};
+
+/** A mark, for reading. Never colour alone: the letter rides along. */
 export function StatusBadge({ status }: { status: AttendanceStatus }) {
   const m = STATUS_META[status];
+  const s = STATUS_STYLE[status];
   return (
-    <span className="inline-flex items-center gap-1.5 text-sm">
-      <span
-        aria-hidden
-        className="inline-flex h-[18px] w-[18px] items-center justify-center text-[11px] font-bold text-white"
-        style={{ backgroundColor: m.color }}
-      >
+    <span
+      className="inline-flex items-center gap-1.5 rounded-[var(--r-pill)] border px-2 py-0.5 text-xs font-medium"
+      style={{ background: s.bg, borderColor: s.line, color: s.fg }}
+    >
+      <span aria-hidden className="font-semibold">
         {m.letter}
       </span>
       {m.label}
@@ -232,62 +420,55 @@ export function StatusBadge({ status }: { status: AttendanceStatus }) {
   );
 }
 
-/**
- * The shape of a day in one strip: the four counts in proportion, read at a
- * glance, with the numbers underneath rather than four separate stat tiles.
- */
-export function Tally({
-  counts,
-  size = "md",
-}: {
-  counts: Record<AttendanceStatus, number>;
-  size?: "sm" | "md";
-}) {
+export type Counts = Record<AttendanceStatus, number>;
+
+/** The four marks in proportion, as one bar. */
+export function SplitBar({ counts }: { counts: Counts }) {
   const total = STATUS_ORDER.reduce((n, k) => n + counts[k], 0);
   return (
-    <div>
-      <div
-        className={`flex w-full overflow-hidden ${size === "sm" ? "h-2" : "h-3"} bg-[var(--paper-sunken)]`}
-        role="img"
-        aria-label={STATUS_ORDER.map((k) => `${counts[k]} ${STATUS_META[k].label.toLowerCase()}`).join(
-          ", ",
+    <div
+      role="img"
+      aria-label={STATUS_ORDER.map((k) => `${counts[k]} ${STATUS_META[k].label.toLowerCase()}`).join(
+        ", ",
+      )}
+      className="flex h-2 gap-0.5 overflow-hidden rounded-[var(--r-pill)] bg-subtle"
+    >
+      {total > 0 &&
+        STATUS_ORDER.map((k) =>
+          counts[k] > 0 ? (
+            <span
+              key={k}
+              style={{ flex: `${counts[k]} 1 0`, background: STATUS_STYLE[k].bar }}
+            />
+          ) : null,
         )}
-      >
-        {total > 0 &&
-          STATUS_ORDER.map((k) =>
-            counts[k] > 0 ? (
-              <span
-                key={k}
-                style={{
-                  width: `${(counts[k] / total) * 100}%`,
-                  backgroundColor: STATUS_META[k].color,
-                }}
-              />
-            ) : null,
-          )}
-      </div>
-      <dl className="mt-2.5 flex flex-wrap gap-x-6 gap-y-1.5">
-        {STATUS_ORDER.map((k) => (
-          <div key={k} className="flex items-baseline gap-1.5">
-            <dt className="flex items-baseline gap-1.5 text-sm text-[var(--ink-soft)]">
-              <span
-                aria-hidden
-                className="inline-block h-2.5 w-2.5 translate-y-[1px]"
-                style={{ backgroundColor: STATUS_META[k].color }}
-              />
-              {STATUS_META[k].label}
-            </dt>
-            <dd className="text-base font-semibold text-[var(--ink)]">{counts[k]}</dd>
-          </div>
-        ))}
-      </dl>
     </div>
   );
 }
 
+export function CountLegend({ counts }: { counts: Counts }) {
+  return (
+    <dl className="flex flex-wrap gap-x-5 gap-y-1.5">
+      {STATUS_ORDER.map((k) => (
+        <div key={k} className="flex items-baseline gap-1.5">
+          <dt className="flex items-baseline gap-1.5 text-muted">
+            <span
+              aria-hidden
+              className="inline-block h-2 w-2 translate-y-[-1px] rounded-[2px]"
+              style={{ background: STATUS_STYLE[k].bar }}
+            />
+            {STATUS_META[k].label}
+          </dt>
+          <dd className="font-semibold">{counts[k]}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
 /**
- * "Nine of fifteen classes have submitted" is a question about which ones, so
- * show the fifteen.
+ * One square per class, filled when it has submitted. The reader's next
+ * question after "how many" is "which ones", so show them.
  */
 export function Progress({
   done,
@@ -300,20 +481,24 @@ export function Progress({
 }) {
   return (
     <div>
-      <div className="flex flex-wrap gap-1" role="img" aria-label={`${done} of ${total} ${label}`}>
+      <div
+        role="img"
+        aria-label={`${done} of ${total} ${label}`}
+        className="flex flex-wrap gap-1"
+      >
         {Array.from({ length: Math.max(total, done) }, (_, i) => (
           <span
             key={i}
-            className="h-3.5 w-3.5 border"
+            className="h-3.5 w-3.5 rounded-[3px] border"
             style={{
-              borderColor: i < done ? "var(--brand)" : "var(--rule)",
-              backgroundColor: i < done ? "var(--brand)" : "transparent",
+              borderColor: i < done ? "var(--primary)" : "var(--line-strong)",
+              background: i < done ? "var(--primary)" : "transparent",
             }}
           />
         ))}
       </div>
-      <p className="mt-2.5 text-sm text-[var(--ink-soft)]">
-        <span className="text-base font-semibold text-[var(--ink)]">
+      <p className="mt-2.5 text-muted">
+        <span className="font-semibold text-ink">
           {done} of {total}
         </span>{" "}
         {label}
@@ -322,7 +507,7 @@ export function Progress({
   );
 }
 
-/** A seat, marked the way a cell on the form is marked. */
+/** One seat. Tapping walks present → absent → late → excused. */
 export function SeatChip({
   name,
   secondary,
@@ -336,39 +521,151 @@ export function SeatChip({
   onTap?: () => void;
   title?: string;
 }) {
+  const s = STATUS_STYLE[status];
   const m = STATUS_META[status];
-  const marked = status !== "present";
   return (
     <button
       type="button"
       onClick={onTap}
-      aria-label={`${name}: ${m.label}`}
+      aria-label={`${name}: ${m.label}. Tap to change.`}
       title={title ?? name}
-      className="flex w-full items-stretch gap-2 rounded-[2px] bg-[var(--paper-raised)] p-0 text-left transition-transform active:scale-[0.97]"
-      style={{
-        border: `1px solid ${marked ? m.color : "var(--rule)"}`,
-        borderLeftWidth: 4,
-        borderLeftColor: m.color,
-        backgroundColor: marked ? "color-mix(in srgb, " + m.color + " 8%, var(--paper-raised))" : undefined,
-      }}
+      className="flex h-[46px] min-w-0 flex-col justify-center rounded-control border px-2 py-0.5 text-left shadow-control transition-transform active:scale-[0.97]"
+      style={{ background: s.bg, borderColor: s.line, color: s.fg }}
     >
-      <span className="min-w-0 flex-1 py-1.5 pl-2 leading-tight">
-        <span className="block truncate text-[0.8125rem] font-medium text-[var(--ink)]">
-          {name}
-        </span>
-        {secondary && (
-          <span className="w-narrow block truncate text-[0.6875rem] text-[var(--ink-faint)]">
-            {secondary}
-          </span>
-        )}
-      </span>
-      <span
-        aria-hidden
-        className="w-narrow self-stretch px-1.5 pt-1.5 text-[0.8125rem] font-bold"
-        style={{ color: m.color }}
-      >
-        {m.letter}
+      <span className="truncate text-xs font-semibold leading-[1.3]">{name}</span>
+      <span className="truncate text-xs leading-[1.3] opacity-85">
+        {secondary ?? m.label}
       </span>
     </button>
+  );
+}
+
+/** The P/A/L/E group on a roster row: four joined 44px buttons. */
+export function SegmentedStatus({
+  value,
+  onChange,
+  label,
+}: {
+  value: AttendanceStatus;
+  onChange: (next: AttendanceStatus) => void;
+  label: string;
+}) {
+  return (
+    <div
+      role="group"
+      aria-label={label}
+      className="flex shrink-0 rounded-control shadow-control"
+    >
+      {STATUS_ORDER.map((k, i) => {
+        const on = k === value;
+        const s = STATUS_STYLE[k];
+        return (
+          <button
+            key={k}
+            type="button"
+            onClick={() => onChange(k)}
+            aria-label={STATUS_META[k].label}
+            aria-pressed={on}
+            className="h-11 w-11 border text-sm font-medium"
+            style={{
+              marginLeft: i === 0 ? 0 : -1,
+              borderRadius:
+                i === 0
+                  ? "var(--r-control) 0 0 var(--r-control)"
+                  : i === STATUS_ORDER.length - 1
+                    ? "0 var(--r-control) var(--r-control) 0"
+                    : "0",
+              background: on ? s.solid : "var(--surface)",
+              borderColor: on ? s.solid : "var(--line)",
+              color: on ? s.solidFg : "var(--muted)",
+              zIndex: on ? 1 : 0,
+              position: "relative",
+            }}
+          >
+            {STATUS_META[k].letter}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * Feedback
+ * ------------------------------------------------------------------ */
+
+export function Callout({
+  tone = "info",
+  title,
+  children,
+  action,
+  icon,
+}: {
+  tone?: "info" | "ok" | "warn" | "danger" | "offline";
+  title?: ReactNode;
+  children?: ReactNode;
+  action?: ReactNode;
+  icon?: ReactNode;
+}) {
+  const color = {
+    info: "var(--muted)",
+    ok: "var(--ok)",
+    warn: "var(--warn)",
+    danger: "var(--danger-icon)",
+    offline: "var(--muted)",
+  }[tone];
+  const glyph =
+    icon ??
+    {
+      info: <InfoIcon />,
+      ok: <CheckIcon />,
+      warn: <AlertIcon />,
+      danger: <AlertIcon />,
+      offline: <OfflineIcon />,
+    }[tone];
+
+  return (
+    <div
+      role="status"
+      className="flex items-start gap-3 rounded-panel border border-line bg-surface px-4 py-3"
+    >
+      <span className="mt-0.5 shrink-0" style={{ color }}>
+        {glyph}
+      </span>
+      <div className="min-w-0 flex-1">
+        {title && <div className="font-medium tracking-[-0.01em]">{title}</div>}
+        {children && <div className="text-muted">{children}</div>}
+      </div>
+      {action && <div className="shrink-0 self-center">{action}</div>}
+    </div>
+  );
+}
+
+/** Kept for the pages that still call it; Callout is the fuller shape. */
+export function Banner({
+  tone = "info",
+  children,
+}: {
+  tone?: "info" | "warn" | "danger" | "ok";
+  children: ReactNode;
+}) {
+  return <Callout tone={tone}>{children}</Callout>;
+}
+
+export function EmptyState({
+  title,
+  children,
+  action,
+}: {
+  title: ReactNode;
+  children?: ReactNode;
+  action?: ReactNode;
+}) {
+  return (
+    <div className="py-6">
+      <p className="font-medium">{title}</p>
+      {children && <p className="mt-1 max-w-[62ch] text-muted">{children}</p>}
+      {action && <div className="mt-4">{action}</div>}
+    </div>
   );
 }

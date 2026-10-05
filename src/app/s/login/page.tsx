@@ -12,17 +12,27 @@ export default async function LoginPage() {
   if (session && school && session.schoolId === school.id) redirect("/");
 
   return (
-    <div className="mx-auto w-full max-w-[26rem] px-5 py-12 sm:py-20">
-      <h1 className="w-wide text-[1.75rem] font-bold leading-tight">{school?.name}</h1>
-      <p className="mt-1.5 mb-7 text-[var(--ink-soft)]">
-        Staff, students and parents all sign in here.
-      </p>
+    <div className="mx-auto flex min-h-dvh w-full max-w-[26rem] flex-col justify-center px-[var(--gutter)] py-12">
+      <div className="mb-6">
+        <span
+          aria-hidden
+          className="mb-4 flex h-10 w-10 items-center justify-center rounded-control bg-primary text-sm font-semibold text-[#FAFAFA]"
+        >
+          {school?.name
+            .split(/\s+/)
+            .slice(0, 2)
+            .map((w) => w[0]?.toUpperCase())
+            .join("")}
+        </span>
+        <h1 className="text-2xl font-semibold tracking-[-0.02em]">{school?.name}</h1>
+        <p className="mt-1 text-muted">Staff, students and parents all sign in here.</p>
+      </div>
       <Panel>
         <LoginForm />
       </Panel>
-      <p className="mt-5 text-sm text-[var(--ink-soft)]">
+      <p className="mt-5 text-muted">
         No account yet?{" "}
-        <Link href="/signup" className="font-medium text-[var(--brand)] underline underline-offset-2">
+        <Link href="/signup" className="font-medium underline underline-offset-2">
           Sign up with a student ID
         </Link>
         . Staff are invited by the school admin.

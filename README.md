@@ -30,6 +30,7 @@ Postgres 16 and Node 22.
 ```bash
 cp .env.example .env.local        # then edit DATABASE_URL if you are not on localhost
 npm install
+# If Postgres is not running yet: sudo pg_ctlcluster 16 main start
 npm run db:push                   # creates the tables, the app_user role and the RLS policies
 npm run db:seed                   # two demo schools + the platform admin, prints the logins
 npm run dev
@@ -53,34 +54,35 @@ npm run build
 
 ## The look of it
 
-The product it replaces is a class record book, so the interface is one too.
-That is where every structural choice comes from, rather than from a dashboard
-template:
+The interface follows one system, written down as a repo skill at
+`.claude/skills/schoolportal-ui/` so that every later change lands in the same
+language. Load it before touching anything under `src/app` or
+`src/components`; `reference/tokens.md` has every value and
+`reference/components.md` the kit.
 
-- **Rules, not cards.** A section is a 2px navy rule with its name beneath it;
-  rows are separated by hairlines. Nothing floats and nothing casts a shadow.
-  The one container is `Panel`, a bound page with a spine, used where content
-  genuinely needs an edge (a sign-in form, the hero demo).
-- **Ledger paper.** The ground is `#F1F4EC`, the pale green of an accounting
-  pad. Ink is `#16283D`, the brand navy taken to its darkest, never a tinted
-  black. The plan's `#2F557F` and `#FFA92D` are kept as given.
-- **One typeface across its width axis.** Archivo variable: expanded for
-  headlines, normal for text, condensed for column heads, because that is how
-  a form fits a label into a narrow column. Tabular figures throughout.
-- **Square documents, soft controls.** Zero radius on anything document-like,
-  2px on anything you touch.
-- **Letter codes.** Every attendance mark carries its letter (P, A, L, E) as
-  well as its colour, as it is written on School Form 2. Present is a quiet
-  green so the exceptions carry the eye.
+In short: **neutral greys, white cards on a near-white ground, one near-black
+for every primary action, and colour kept for the four attendance marks.** If
+a screen looks colourful, something is wrong — the only saturated things on a
+page should be the marks a teacher made.
 
-The home page opens on the product rather than on a headline: a live seat grid
-with a switch that cuts the signal, so a visitor can watch taps queue instead
-of disappear.
+- **Type** is Geist, one family, 400 to 700, with tabular figures everywhere.
+- **Surfaces** are white cards, 14px radius, a 1px `#E5E5E5` line and a soft
+  two-stop shadow, on a `#FAFAFA` ground. Controls are 8px.
+- **Marks** each have a soft form (a tinted chip on the seat map) and a solid
+  form (the chosen segment in the P/A/L/E control). Present is the quietest of
+  the four, so a room full of present students lets the exceptions carry the
+  eye, and every mark shows its letter as well as its colour.
+- **44px is the floor** for anything a finger touches, 48px for the primary
+  action at the bottom of a phone screen.
+- **Two shells**: a 240px sidebar with a breadcrumb header from `lg` up, and a
+  fixed bottom tab bar below it. Teachers work on a phone and office staff on
+  a desktop, so neither is the afterthought.
+- Light only. There is no dark mode, by decision.
 
-**Responsive**: every screen is checked at 320, 360, 390, 414, 768, 1024 and
-1440 px with no horizontal page scroll (`npm run responsive`). The seat grid
-is the one thing that scrolls sideways on a phone — it keeps the room's shape
-instead of squeezing the names out, and a list view is one tap away.
+**Responsive**: `npm run responsive` loads fifteen screens at 320, 360, 390,
+414, 768, 1024 and 1440 px and fails on any horizontal page scroll. The seat
+grid is the one thing that scrolls sideways on a phone — it keeps the room's
+shape instead of squeezing the names out, and a list view is one tap away.
 
 ## How a request is served
 

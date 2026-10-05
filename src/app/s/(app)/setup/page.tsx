@@ -13,7 +13,16 @@ import {
 import { requirePermission } from "@/lib/guard";
 import Link from "next/link";
 import { ActionForm } from "@/components/action-form";
-import { Section, Field, Input, Select, Table } from "@/components/ui";
+import {
+  Field,
+  Input,
+  LinkButton,
+  PageHeader,
+  Pill,
+  Section,
+  Select,
+  Table,
+} from "@/components/ui";
 import { WEEKDAYS, prettyTime } from "@/lib/format";
 import {
   addRoom,
@@ -107,35 +116,46 @@ export default async function SetupPage() {
 
   return (
     <>
+      <PageHeader
+        title="Setup"
+        meta={
+          left.length === 0
+            ? "Everything is in place."
+            : `${left.length} of ${checklist.length} steps left before teachers can start.`
+        }
+      />
+
       <Section
         title="Before you go live"
         subtitle={
           left.length === 0
-            ? "Everything is in place. Teachers can take attendance today."
-            : `${left.length} left. Each one opens the part of this page that does it.`
+            ? "Teachers can take attendance today."
+            : "Each unfinished step opens the part of this page that does it."
         }
       >
-        <ol className="ledger-rows">
-          {checklist.map((c) => (
-            <li key={c.label} className="flex items-center gap-3 py-2.5 text-sm">
+        <ol className="-mx-1">
+          {checklist.map((c, i) => (
+            <li
+              key={c.label}
+              className={`flex min-h-11 items-center gap-3 px-1 py-2 ${i > 0 ? "border-t border-line" : ""}`}
+            >
               <span
                 aria-hidden
-                className={`inline-flex h-4 w-4 shrink-0 items-center justify-center text-[11px] font-bold text-white ${
-                  c.done ? "bg-[var(--color-present)]" : "bg-[var(--rule)]"
-                }`}
+                className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-[var(--r-pill)] text-[11px] font-bold text-white"
+                style={{ background: c.done ? "var(--ok)" : "var(--line-strong)" }}
               >
-                {c.done ? "\u2713" : ""}
+                {c.done ? "\u2713" : i + 1}
               </span>
               {c.done || !c.href ? (
-                <span className={c.done ? "text-[var(--ink-soft)]" : ""}>{c.label}</span>
+                <span className={c.done ? "text-muted" : ""}>{c.label}</span>
               ) : (
-                <Link
-                  href={c.href}
-                  className="font-medium text-[var(--brand)] underline underline-offset-2"
-                >
+                <Link href={c.href} className="font-medium underline underline-offset-2">
                   {c.label}
                 </Link>
               )}
+              <span className="ml-auto">
+                {c.done ? <Pill tone="ok">Done</Pill> : <Pill>To do</Pill>}
+              </span>
             </li>
           ))}
         </ol>
@@ -154,7 +174,7 @@ export default async function SetupPage() {
           <Field label="Name">
             <Input name="name" placeholder="2026–2027" required />
           </Field>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Starts">
               <Input type="date" name="startsOn" required />
             </Field>
@@ -176,9 +196,9 @@ export default async function SetupPage() {
             </Field>
           </ActionForm>
           {data.sections.length > 0 && (
-            <ul className="mt-4 flex flex-wrap gap-2 text-xs">
+            <ul className="mt-4 flex flex-wrap gap-2">
               {data.sections.map((s) => (
-                <li key={s.id} className="rounded-[2px] border border-[var(--rule)] bg-[var(--paper-raised)] px-2 py-0.5 text-[var(--ink)]">
+                <li key={s.id} className="rounded-[var(--r-pill)] border border-line bg-subtle px-2.5 py-0.5 text-xs font-medium">
                   {s.level} {s.name}
                 </li>
               ))}
@@ -196,9 +216,9 @@ export default async function SetupPage() {
             </Field>
           </ActionForm>
           {data.subjects.length > 0 && (
-            <ul className="mt-4 flex flex-wrap gap-2 text-xs">
+            <ul className="mt-4 flex flex-wrap gap-2">
               {data.subjects.map((s) => (
-                <li key={s.id} className="rounded-[2px] border border-[var(--rule)] bg-[var(--paper-raised)] px-2 py-0.5 text-[var(--ink)]">
+                <li key={s.id} className="rounded-[var(--r-pill)] border border-line bg-subtle px-2.5 py-0.5 text-xs font-medium">
                   {s.code}
                 </li>
               ))}
@@ -211,7 +231,7 @@ export default async function SetupPage() {
             <Field label="Name">
               <Input name="name" placeholder="Room 201" required />
             </Field>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label="Rows">
                 <Input type="number" name="rows" defaultValue={5} min={1} max={12} />
               </Field>
@@ -221,9 +241,9 @@ export default async function SetupPage() {
             </div>
           </ActionForm>
           {data.rooms.length > 0 && (
-            <ul className="mt-4 flex flex-wrap gap-2 text-xs">
+            <ul className="mt-4 flex flex-wrap gap-2">
               {data.rooms.map((r) => (
-                <li key={r.id} className="rounded-[2px] border border-[var(--rule)] bg-[var(--paper-raised)] px-2 py-0.5 text-[var(--ink)]">
+                <li key={r.id} className="rounded-[var(--r-pill)] border border-line bg-subtle px-2.5 py-0.5 text-xs font-medium">
                   {r.name}, {r.rows}×{r.cols}
                 </li>
               ))}
@@ -238,10 +258,16 @@ export default async function SetupPage() {
         >
           <ActionForm action={importStudents} submitLabel="Import" className="grid gap-3">
             <Field label="CSV file" hint="Errors are shown before anything is saved.">
-              <input type="file" name="file" accept=".csv,text/csv" required className="text-sm" />
+              <input
+                type="file"
+                name="file"
+                accept=".csv,text/csv"
+                required
+                className="block w-full max-w-full text-sm"
+              />
             </Field>
           </ActionForm>
-          <p className="mt-3 text-xs text-[var(--ink-faint)]">
+          <p className="mt-3 text-xs text-muted">
             {Number(data.studentCount ?? 0)} students on file. Each import generates
             an activation code and a separate parent code per student.
           </p>
@@ -299,7 +325,7 @@ export default async function SetupPage() {
               ))}
             </Select>
           </Field>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Starts">
               <Input type="time" name="startsAt" required />
             </Field>
@@ -314,15 +340,15 @@ export default async function SetupPage() {
             <Table head={["Day", "Time", "Class", "Teacher", "Room"]}>
               {data.slots.map((s) => (
                 <tr key={s.id}>
-                  <td className="py-2 pr-5">{WEEKDAYS[s.weekday]}</td>
-                  <td className="py-2 pr-5 tabular-nums">
+                  <td>{WEEKDAYS[s.weekday]}</td>
+                  <td className="tabular-nums">
                     {prettyTime(s.startsAt)}–{prettyTime(s.endsAt)}
                   </td>
-                  <td className="py-2 pr-5">
+                  <td>
                     {s.subject}, {s.level} {s.section}
                   </td>
-                  <td className="py-2 pr-5">{s.teacher}</td>
-                  <td className="py-2 pr-5">{s.room ?? "—"}</td>
+                  <td>{s.teacher}</td>
+                  <td>{s.room ?? "—"}</td>
                 </tr>
               ))}
             </Table>

@@ -1,11 +1,26 @@
 import Link from "next/link";
-import { and, asc, eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { withTenant } from "@/db";
 import { sections } from "@/db/schema";
 import { requirePermission } from "@/lib/guard";
 import { monthlyReport } from "@/modules/attendance/queries";
 import { monthKey } from "@/lib/format";
-import { Section, Table } from "@/components/ui";
+import {
+  Button,
+  EmptyState,
+  LinkButton,
+  Meta,
+  PageHeader,
+  Section,
+  SplitBar,
+  STATUS_META,
+  STATUS_ORDER,
+  StatGrid,
+  StatTile,
+  Table,
+  type Counts,
+} from "@/components/ui";
+import { DownloadIcon } from "@/components/icons";
 
 export const metadata = { title: "Attendance report" };
 
@@ -28,7 +43,7 @@ export default async function ReportPage({
       .orderBy(asc(sections.level), asc(sections.name)),
   }));
 
-  const totals = rows.reduce(
+  const totals: Counts = rows.reduce(
     (acc, r) => ({
       present: acc.present + r.present,
       absent: acc.absent + r.absent,
@@ -37,39 +52,73 @@ export default async function ReportPage({
     }),
     { present: 0, absent: 0, late: 0, excused: 0 },
   );
-
+  const marks = totals.present + totals.absent + totals.late + totals.excused;
   const query = new URLSearchParams({ month, ...(sectionId ? { section: sectionId } : {}) });
+  const sectionName = sectionList.find((s) => s.id === sectionId);
 
   return (
-    <div className="grid gap-5">
-      <Section
-        title="Monthly attendance"
-        subtitle={`${rows.length} students, ${month}`}
-        actions={
-          <a
-            href={`/api/attendance/report.csv?${query}`}
-            className="brand-text text-sm font-medium underline"
-          >
-            Export CSV
-          </a>
+    <>
+      <PageHeader
+        title="Attendance report"
+        meta={
+          <Meta
+            items={[
+              month,
+              sectionName ? `${sectionName.level} ${sectionName.name}` : "All sections",
+              `${rows.length} students`,
+            ]}
+          />
         }
-      >
-        <form className="mb-5 flex flex-wrap items-end gap-3" method="get">
-          <label className="text-sm">
-            <span className="mb-1 block font-medium">Month</span>
+        actions={
+          rows.length > 0 ? (
+            <LinkButton
+              href={`/api/attendance/report.csv?${query}`}
+              variant="secondary"
+              prefetch={false}
+            >
+              <DownloadIcon />
+              Export this month
+            </LinkButton>
+          ) : null
+        }
+      />
+
+      {marks > 0 && (
+        <StatGrid>
+          {STATUS_ORDER.map((k) => (
+            <StatTile
+              key={k}
+              label={STATUS_META[k].label}
+              value={totals[k].toLocaleString("en-PH")}
+              caption={`${((totals[k] / marks) * 100).toFixed(1)}% of ${marks.toLocaleString("en-PH")} marks`}
+            />
+          ))}
+        </StatGrid>
+      )}
+
+      {marks > 0 && (
+        <Section title="The month at a glance" subtitle="Every mark recorded in this month, in proportion.">
+          <SplitBar counts={totals} />
+        </Section>
+      )}
+
+      <Section title="Pick a month" subtitle="The export carries exactly what is shown here.">
+        <form method="get" className="flex flex-wrap items-end gap-3">
+          <label className="block">
+            <span className="mb-1.5 block text-sm font-medium">Month</span>
             <input
               type="month"
               name="month"
               defaultValue={month}
-              className="rounded-[2px] border border-[var(--rule)] border-b-2 border-b-[var(--ink-soft)] bg-[var(--paper-raised)] px-3 py-2 text-sm"
+              className="h-11 rounded-control border border-line-strong bg-surface px-3 shadow-control"
             />
           </label>
-          <label className="text-sm">
-            <span className="mb-1 block font-medium">Section</span>
+          <label className="block">
+            <span className="mb-1.5 block text-sm font-medium">Section</span>
             <select
               name="section"
               defaultValue={sectionId ?? ""}
-              className="rounded-[2px] border border-[var(--rule)] border-b-2 border-b-[var(--ink-soft)] bg-[var(--paper-raised)] px-3 py-2 text-sm"
+              className="h-11 rounded-control border border-line-strong bg-surface px-3 shadow-control"
             >
               <option value="">All sections</option>
               {sectionList.map((s) => (
@@ -79,43 +128,46 @@ export default async function ReportPage({
               ))}
             </select>
           </label>
-          <button className="rounded-[2px] bg-[var(--brand)] px-4 py-2 text-sm font-medium text-white">
-            Show
-          </button>
+          <Button type="submit">Show</Button>
         </form>
+      </Section>
 
+      <Section title="By student" flush={rows.length > 0}>
         {rows.length === 0 ? (
-          <p className="text-sm text-[var(--ink-soft)]">
-            Nothing recorded for this month yet. Teachers take their classes
-            from{" "}
-            <Link href="/attendance" className="font-medium text-[var(--brand)] underline underline-offset-2">
-              Take attendance
+          <EmptyState title="Nothing recorded for this month yet">
+            Teachers take their classes from{" "}
+            <Link href="/attendance" className="font-medium underline underline-offset-2">
+              Attendance
             </Link>
-            .
-          </p>
+            , and every mark lands here.
+          </EmptyState>
         ) : (
-          <Table head={["Student", "ID", "Present", "Absent", "Late", "Excused"]}>
+          <Table head={["Student", "ID", "Present", "Absent", "Late", "Excused"]} minWidth={620}>
             {rows.map((r) => (
               <tr key={r.studentId}>
-                <td className="py-2 pr-5 font-medium">{r.name}</td>
-                <td className="py-2 pr-5 tabular-nums">{r.studentNumber}</td>
-                <td className="py-2 pr-5 tabular-nums">{r.present}</td>
-                <td className="py-2 pr-5 tabular-nums">{r.absent}</td>
-                <td className="py-2 pr-5 tabular-nums">{r.late}</td>
-                <td className="py-2 pr-5 tabular-nums">{r.excused}</td>
+                <th scope="row" className="text-left font-medium">
+                  {r.name}
+                </th>
+                <td className="text-muted">{r.studentNumber}</td>
+                <td>{r.present}</td>
+                <td>{r.absent}</td>
+                <td>{r.late}</td>
+                <td>{r.excused}</td>
               </tr>
             ))}
             <tr className="font-semibold">
-              <td className="py-2 pr-5">Total</td>
+              <th scope="row" className="text-left">
+                Total
+              </th>
               <td />
-              <td className="py-2 pr-5 tabular-nums">{totals.present}</td>
-              <td className="py-2 pr-5 tabular-nums">{totals.absent}</td>
-              <td className="py-2 pr-5 tabular-nums">{totals.late}</td>
-              <td className="py-2 pr-5 tabular-nums">{totals.excused}</td>
+              <td>{totals.present}</td>
+              <td>{totals.absent}</td>
+              <td>{totals.late}</td>
+              <td>{totals.excused}</td>
             </tr>
           </Table>
         )}
       </Section>
-    </div>
+    </>
   );
 }

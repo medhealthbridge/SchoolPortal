@@ -2,7 +2,7 @@ import { desc, eq } from "drizzle-orm";
 import { withTenant } from "@/db";
 import { auditLog } from "@/db/schema";
 import { requirePermission } from "@/lib/guard";
-import { Section, Table } from "@/components/ui";
+import { EmptyState, PageHeader, Section, Table } from "@/components/ui";
 
 export const metadata = { title: "Audit log" };
 
@@ -18,22 +18,35 @@ export default async function AuditPage() {
   );
 
   return (
-    <Section title="Audit log" subtitle="Every change and every sensitive view, newest first.">
-      <Table head={["When", "Who", "Action", "Entity"]}>
+    <>
+      <PageHeader title="Audit log" meta={`${rows.length} most recent entries`} />
+      <Section
+        flush={rows.length > 0}
+        title="Every change and every sensitive view"
+        subtitle="Newest first. Entries are never edited or removed."
+      >
+      {rows.length === 0 ? (
+        <EmptyState title="Nothing logged yet">
+          Every write lands here the moment someone makes one.
+        </EmptyState>
+      ) : (
+      <Table head={["When", "Who", "What", "Record"]} minWidth={620}>
         {rows.map((r) => (
           <tr key={r.id}>
-            <td className="py-2 pr-5 whitespace-nowrap tabular-nums">
+            <td className="whitespace-nowrap tabular-nums">
               {r.at.toLocaleString("en-PH")}
             </td>
-            <td className="py-2 pr-5">{r.actorLabel}</td>
-            <td className="py-2 pr-5">{readableAction(r.action)}</td>
-            <td className="py-2 pr-5 text-xs text-[var(--ink-soft)]">
+            <td>{r.actorLabel}</td>
+            <td>{readableAction(r.action)}</td>
+            <td className="text-xs text-muted">
               {r.entity ? `${r.entity} ${r.entityId?.slice(0, 8) ?? ""}` : "—"}
             </td>
           </tr>
         ))}
       </Table>
-    </Section>
+      )}
+      </Section>
+    </>
   );
 }
 

@@ -5,11 +5,13 @@ export const metadata = { title: "Register your school" };
 
 export default function RegisterPage() {
   return (
-    <div className="mx-auto w-full max-w-[40rem] px-5 py-12 sm:py-16">
-      <h1 className="w-wide text-[2rem] font-bold leading-tight">Register your school</h1>
-      <p className="mt-2 mb-9 max-w-[54ch] text-[1.0625rem] text-[var(--ink-soft)]">
-        Four steps here, five more inside, and your school is live on its own
-        address. Nothing to install and nobody to call.
+    <div className="mx-auto w-full max-w-[40rem] px-[var(--gutter)] py-10 sm:py-14">
+      <h1 className="text-[32px] font-semibold leading-tight tracking-[-0.03em]">
+        Register your school
+      </h1>
+      <p className="mb-8 mt-2 max-w-[54ch] text-base text-muted">
+        Four steps here, five more inside, and your school is live on its own address. Nothing
+        to install and nobody to call.
       </p>
       <Suspense fallback={null}>
         <RegisterWizard />

@@ -1,5 +1,5 @@
 /* SchoolPortal service worker: keeps attendance usable with no signal. */
-const VERSION = "sp-v1";
+const VERSION = "sp-v2";
 const SHELL = `${VERSION}-shell`;
 const DATA = `${VERSION}-data`;
 

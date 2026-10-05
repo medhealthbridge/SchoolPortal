@@ -2,7 +2,15 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Banner, Meta, Section } from "@/components/ui";
+import {
+  Callout,
+  EmptyState,
+  Meta,
+  PageHeader,
+  Pill,
+  Section,
+} from "@/components/ui";
+import { ArrowRightIcon } from "@/components/icons";
 import { drainQueue, localCache, queue, registerServiceWorker } from "@/lib/offline";
 import { prettyTime, WEEKDAYS } from "@/lib/format";
 
@@ -56,45 +64,64 @@ export default function TodayClasses() {
     return () => window.removeEventListener("online", onOnline);
   }, []);
 
+  const now = new Date().toTimeString().slice(0, 8);
+  const currentIndex = slots?.findIndex((s) => now >= s.startsAt && now <= s.endsAt) ?? -1;
+  const nextIndex =
+    currentIndex === -1 ? (slots?.findIndex((s) => s.startsAt > now) ?? -1) : -1;
+
   return (
     <>
+      <PageHeader
+        title="Attendance"
+        meta={
+          <Meta
+            items={[
+              WEEKDAYS[weekday] || "Today",
+              slots ? `${slots.length} ${slots.length === 1 ? "class" : "classes"}` : null,
+            ]}
+          />
+        }
+      />
+
       {offline && (
-        <Banner tone="warn">
-          No signal. These classes came from this morning&apos;s download, and
-          everything you mark is held here until the signal returns.
-        </Banner>
+        <Callout tone="offline" title="You are offline">
+          These classes came from this morning&apos;s download. Everything you mark is held on
+          this device until the signal returns.
+        </Callout>
       )}
       {pendingCount > 0 && (
-        <Banner tone="warn">
-          {pendingCount} {pendingCount === 1 ? "mark is" : "marks are"} waiting to go up.
-        </Banner>
+        <Callout tone="warn" title={`${pendingCount} ${pendingCount === 1 ? "mark" : "marks"} waiting to go up`}>
+          They upload by themselves the moment you are back online.
+        </Callout>
       )}
 
-      <Section
-        title={WEEKDAYS[weekday] || "Today"}
-        subtitle="Open a class to take it. Each one remembers its seat plan."
-      >
+      <Section title="Your classes" subtitle="Each one opens on its own seat plan.">
         {slots === null ? (
-          <p className="text-sm text-[var(--ink-soft)]">Opening your timetable.</p>
+          <p className="text-muted">Opening your timetable.</p>
         ) : slots.length === 0 ? (
-          <p className="max-w-[60ch] text-sm text-[var(--ink-soft)]">
-            Nothing on your timetable today. The school admin builds the
-            timetable in Setup, and your classes appear here the same day.
-          </p>
+          <EmptyState title="Nothing on your timetable today">
+            The school admin builds the timetable in Setup, and your classes appear here the
+            same day.
+          </EmptyState>
         ) : (
-          <ul className="ledger-rows">
-            {slots.map((s) => (
-              <li key={s.id}>
+          <ul className="-mx-1">
+            {slots.map((s, i) => (
+              <li key={s.id} className={i > 0 ? "border-t border-line" : ""}>
                 <Link
                   href={`/attendance/${s.id}?date=${date}`}
-                  className="flex items-baseline justify-between gap-4 py-3 hover:text-[var(--brand)]"
+                  className="flex min-h-[60px] items-center justify-between gap-3 px-1 py-2.5 no-underline hover:bg-subtle"
                 >
                   <span className="min-w-0">
-                    <span className="block font-medium">{s.subjectName}</span>
+                    <span className="flex items-center gap-2">
+                      <span className="truncate font-medium">{s.subjectName}</span>
+                      {i === currentIndex && <Pill tone="solid">Now</Pill>}
+                      {i === nextIndex && <Pill>Next</Pill>}
+                    </span>
                     <Meta items={[s.sectionLabel, s.roomName].filter(Boolean) as string[]} />
                   </span>
-                  <span className="shrink-0 text-sm font-semibold">
-                    {prettyTime(s.startsAt)}
+                  <span className="flex shrink-0 items-center gap-3">
+                    <span className="font-medium">{prettyTime(s.startsAt)}</span>
+                    <ArrowRightIcon className="text-muted" />
                   </span>
                 </Link>
               </li>

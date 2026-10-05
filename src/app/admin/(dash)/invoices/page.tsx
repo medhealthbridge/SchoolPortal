@@ -3,7 +3,17 @@ import { db } from "@/db";
 import { invoices, schools } from "@/db/schema";
 import { requireAdmin } from "@/lib/guard";
 import { peso } from "@/lib/pricing";
-import { Section, Table } from "@/components/ui";
+import {
+  Button,
+  EmptyState,
+  Input,
+  PageHeader,
+  Pill,
+  Section,
+  StatGrid,
+  StatTile,
+  Table,
+} from "@/components/ui";
 import { monthKey, prettyDate } from "@/lib/format";
 import { markInvoicePaid, runBilling } from "../actions";
 
@@ -18,55 +28,76 @@ export default async function InvoicesPage() {
     .orderBy(desc(invoices.issuedAt))
     .limit(100);
 
-  const outstanding = rows
-    .filter((r) => r.invoice.status === "issued")
+  const open = rows.filter((r) => r.invoice.status === "issued");
+  const outstanding = open.reduce((n, r) => n + r.invoice.totalCentavos, 0);
+  const collected = rows
+    .filter((r) => r.invoice.status === "paid")
     .reduce((n, r) => n + r.invoice.totalCentavos, 0);
 
   return (
-    <div className="grid gap-5">
-      <Section
+    <>
+      <PageHeader
         title="Invoices"
-        subtitle={`${peso(outstanding)} outstanding`}
+        meta={`${rows.length} issued`}
         actions={
           <form action={runBilling}>
-            <button className="rounded-[2px] bg-[var(--brand)] px-3 py-1.5 text-sm font-medium text-white">
-              Run billing for {monthKey()}
-            </button>
+            <Button type="submit">Run billing for {monthKey()}</Button>
           </form>
         }
+      />
+
+      {rows.length > 0 && (
+        <StatGrid>
+          <StatTile
+            label="Outstanding"
+            value={peso(outstanding)}
+            caption={`${open.length} unpaid invoices`}
+          />
+          <StatTile label="Collected" value={peso(collected)} caption="Across every school" />
+        </StatGrid>
+      )}
+
+      <Section
+        title="Every invoice"
+        subtitle="Payments land by bank transfer or e-wallet and are recorded here by hand."
+        flush={rows.length > 0}
       >
         {rows.length === 0 ? (
-          <p className="text-sm text-[var(--ink-soft)]">
-            Nothing issued yet. Running billing counts each school&apos;s active
-            students and issues one invoice per school for the month.
-          </p>
+          <EmptyState title="Nothing issued yet">
+            Running billing counts each school&apos;s active students and issues one invoice per
+            school for the month.
+          </EmptyState>
         ) : (
-          <Table head={["School", "Period", "Students", "Total", "Due", "Status", "Record payment"]}>
+          <Table
+            head={["School", "Period", "Students", "Total", "Due", "Status", "Record payment"]}
+            minWidth={860}
+          >
             {rows.map(({ invoice, school }) => (
               <tr key={invoice.id}>
-                <td className="py-2 pr-5 font-medium">{school.name}</td>
-                <td className="py-2 pr-5">{invoice.period}</td>
-                <td className="py-2 pr-5 tabular-nums">{invoice.studentCount}</td>
-                <td className="py-2 pr-5 tabular-nums">{peso(invoice.totalCentavos)}</td>
-                <td className="py-2 pr-5 text-xs">{prettyDate(invoice.dueOn)}</td>
-                <td className="py-2 pr-5">{invoice.status}</td>
-                <td className="py-2 pr-5">
+                <th scope="row" className="text-left font-medium">
+                  {school.name}
+                </th>
+                <td>{invoice.period}</td>
+                <td>{invoice.studentCount}</td>
+                <td className="font-medium">{peso(invoice.totalCentavos)}</td>
+                <td className="whitespace-nowrap text-muted">{prettyDate(invoice.dueOn)}</td>
+                <td>
+                  <Pill tone={invoice.status === "paid" ? "ok" : "warn"}>{invoice.status}</Pill>
+                </td>
+                <td>
                   {invoice.status === "issued" && (
-                    <form action={markInvoicePaid} className="flex gap-1">
+                    <form action={markInvoicePaid} className="flex items-center gap-2">
                       <input type="hidden" name="invoiceId" value={invoice.id} />
-                      <input
-                        type="hidden"
-                        name="amountCentavos"
-                        value={invoice.totalCentavos}
-                      />
-                      <input
+                      <input type="hidden" name="amountCentavos" value={invoice.totalCentavos} />
+                      <Input
                         name="reference"
                         placeholder="Reference"
-                        className="w-28 rounded-[2px] border border-[var(--rule)] border-b-2 border-b-[var(--ink-soft)] bg-[var(--paper-raised)] px-2 py-1 text-xs"
+                        aria-label={`Payment reference for ${school.name}`}
+                        className="w-32"
                       />
-                      <button className="rounded-[2px] border border-[var(--ink-soft)] px-2.5 py-1 text-[0.8125rem] hover:bg-[var(--paper-sunken)]">
+                      <Button type="submit" variant="secondary" size="sm">
                         Mark paid
-                      </button>
+                      </Button>
                     </form>
                   )}
                 </td>
@@ -75,6 +106,6 @@ export default async function InvoicesPage() {
           </Table>
         )}
       </Section>
-    </div>
+    </>
   );
 }

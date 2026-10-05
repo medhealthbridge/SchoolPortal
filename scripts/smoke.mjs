@@ -55,7 +55,7 @@ if (changed !== 3) throw new Error("tapping a seat did not change its mark");
 // Go offline, submit, confirm it is queued and not lost.
 await ctx.setOffline(true);
 await page.click('button:has-text("Submit")');
-const savedBanner = page.locator('[role="status"]', { hasText: /Held on this phone|Submitted\./ });
+const savedBanner = page.locator('[role="status"]', { hasText: /Held on this device|Submitted\./ });
 await savedBanner.first().waitFor();
 log(`offline submit: ${(await savedBanner.first().textContent())?.trim()}`);
 

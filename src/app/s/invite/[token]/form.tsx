@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Banner, Button, Field, Input } from "@/components/ui";
+import { Button, Callout, Field, Input } from "@/components/ui";
 import { acceptInvite } from "../../(app)/setup/actions";
 
 export default function InviteForm({ token }: { token: string }) {
@@ -11,22 +11,23 @@ export default function InviteForm({ token }: { token: string }) {
   const [pending, start] = useTransition();
 
   return (
-    <div className="grid gap-4">
-      {message?.error && <Banner tone="danger">{message.error}</Banner>}
+    <div className="flex flex-col gap-4">
+      {message?.error && <Callout tone="danger">{message.error}</Callout>}
       {message?.ok && (
-        <Banner>
+        <Callout tone="ok">
           {message.ok}{" "}
-          <a className="font-medium underline" href="/login">
+          <a className="font-medium underline underline-offset-2" href="/login">
             Sign in
           </a>
           .
-        </Banner>
+        </Callout>
       )}
-      <Field label="Your name">
-        <Input value={name} onChange={(e) => setName(e.target.value)} />
+      <Field label="Your name" htmlFor="invite-name">
+        <Input id="invite-name" value={name} onChange={(e) => setName(e.target.value)} />
       </Field>
-      <Field label="Choose a password">
+      <Field label="Choose a password" htmlFor="invite-password" hint="At least 8 characters.">
         <Input
+          id="invite-password"
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
@@ -34,6 +35,7 @@ export default function InviteForm({ token }: { token: string }) {
         />
       </Field>
       <Button
+        size="lg"
         disabled={pending || password.length < 8}
         onClick={() =>
           start(async () => {
@@ -42,7 +44,7 @@ export default function InviteForm({ token }: { token: string }) {
           })
         }
       >
-        {pending ? "Creating…" : "Create my account"}
+        {pending ? "Creating" : "Create my account"}
       </Button>
     </div>
   );

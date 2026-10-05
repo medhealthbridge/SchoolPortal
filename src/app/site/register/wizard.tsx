@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useSearchParams } from "next/navigation";
-import { Banner, Button, Section, Field, Input, Select } from "@/components/ui";
+import { Button, Callout, Field, Input, Panel, Section, Select } from "@/components/ui";
 import { MODULES } from "@/lib/modules";
 import { TIER_LIST, peso } from "@/lib/pricing";
 import {
@@ -86,17 +86,15 @@ export default function RegisterWizard() {
   return (
     <div>
       {/* Four steps, in order, so the numbers are information. */}
-      <ol className="mb-8 flex flex-wrap border-b border-[var(--rule)] text-sm">
+      <ol className="mb-8 flex flex-wrap gap-x-5 gap-y-1 border-b border-line">
         {STEPS.map((label, i) => (
           <li
             key={label}
             aria-current={i === step ? "step" : undefined}
-            className={`-mb-px border-b-[3px] py-2 pr-5 ${
+            className={`-mb-px flex items-center gap-2 border-b-2 py-2.5 ${
               i === step
-                ? "border-[var(--accent)] font-medium text-[var(--ink)]"
-                : i < step
-                  ? "border-transparent text-[var(--brand)]"
-                  : "border-transparent text-[var(--ink-faint)]"
+                ? "border-primary font-medium text-ink"
+                : "border-transparent text-muted"
             }`}
           >
             <span className="w-narrow mr-1.5 font-semibold">{i + 1}</span>
@@ -107,7 +105,7 @@ export default function RegisterWizard() {
 
       {error && (
         <div className="mb-4">
-          <Banner tone="danger">{error}</Banner>
+          <Callout tone="danger">{error}</Callout>
         </div>
       )}
 
@@ -146,7 +144,7 @@ export default function RegisterWizard() {
             </Field>
 
             {!emailVerified && (
-              <div className="ledger-page p-4">
+              <div className="rounded-control border border-line bg-surface p-4">
                 {!codeSent ? (
                   <Button
                     type="button"
@@ -192,7 +190,7 @@ export default function RegisterWizard() {
               </div>
             )}
 
-            {emailVerified && <Banner>Email verified.</Banner>}
+            {emailVerified && <Callout tone="ok">Email verified.</Callout>}
 
             <div>
               <Button
@@ -221,7 +219,7 @@ export default function RegisterWizard() {
                 placeholder="stmary"
                 onChange={(e) => setSubdomain(e.target.value.toLowerCase())}
               />
-              <span className="shrink-0 text-sm text-[var(--ink-soft)]">
+              <span className="shrink-0 text-sm text-muted">
                 .{process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "yourapp.com"}
               </span>
             </div>
@@ -259,7 +257,7 @@ export default function RegisterWizard() {
             </Field>
             <Field label="Branches" hint="One per line. The first is the main campus.">
               <textarea
-                className="w-full rounded-[2px] border border-[var(--rule)] border-b-2 border-b-[var(--ink-soft)] bg-[var(--paper-raised)] px-3 py-2 text-sm"
+                className="w-full rounded-[2px] border border-line border-b-2 border-b-[var(--ink-soft)] bg-surface px-3 py-2 text-sm"
                 rows={3}
                 value={branchNames.join("\n")}
                 onChange={(e) => setBranchNames(e.target.value.split("\n"))}
@@ -286,10 +284,8 @@ export default function RegisterWizard() {
             {TIER_LIST.map((t) => (
               <label
                 key={t.key}
-                className={`flex cursor-pointer items-start gap-3 rounded-lg border p-4 ${
-                  tier === t.key
-                    ? "border-[var(--brand)] bg-[var(--brand-tint)]"
-                    : "border-[var(--rule)]"
+                className={`flex cursor-pointer items-start gap-3 rounded-control border p-4 ${
+                  tier === t.key ? "border-primary bg-subtle" : "border-line bg-surface"
                 }`}
               >
                 <input
@@ -303,7 +299,7 @@ export default function RegisterWizard() {
                   <span className="block font-medium">
                     {t.name}, {peso(t.platformFeeCentavos)} a year
                   </span>
-                  <span className="block text-sm text-[var(--ink-soft)]">
+                  <span className="block text-sm text-muted">
                     {t.modules.map((m) => MODULES[m].name).join(", ")}
                   </span>
                 </span>
@@ -315,7 +311,7 @@ export default function RegisterWizard() {
               Back
             </Button>
             <Button
-              variant="accent"
+              variant="primary"
               disabled={pending}
               onClick={() =>
                 startTransition(async () => {

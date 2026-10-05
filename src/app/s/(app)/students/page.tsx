@@ -1,9 +1,18 @@
 import Link from "next/link";
-import { asc, eq, sql } from "drizzle-orm";
+import { asc, count, eq, sql } from "drizzle-orm";
 import { withTenant } from "@/db";
 import { enrollments, sections, students } from "@/db/schema";
 import { requirePermission } from "@/lib/guard";
-import { Section, Table } from "@/components/ui";
+import {
+  Button,
+  EmptyState,
+  Input,
+  Meta,
+  PageHeader,
+  Pill,
+  Section,
+  Table,
+} from "@/components/ui";
 
 export const metadata = { title: "Students" };
 
@@ -16,8 +25,8 @@ export default async function StudentsPage({
   const { q } = await searchParams;
   const canSeeCodes = session.roles.some((r) => r === "school_admin" || r === "registrar");
 
-  const rows = await withTenant(school.id, (tx) =>
-    tx
+  const { rows, total } = await withTenant(school.id, async (tx) => ({
+    rows: await tx
       .select({
         id: students.id,
         studentNumber: students.studentNumber,
@@ -39,64 +48,97 @@ export default async function StudentsPage({
       )
       .orderBy(asc(students.lastName), asc(students.firstName))
       .limit(500),
-  );
+    total: Number(
+      (await tx.select({ n: count() }).from(students).where(eq(students.schoolId, school.id)))[0]
+        ?.n ?? 0,
+    ),
+  }));
+
+  const unclaimed = rows.filter((r) => !r.claimedAt).length;
 
   return (
-    <Section
-      title="Students"
-      subtitle={`${rows.length} shown${canSeeCodes ? ". Codes are printed and handed out on paper, never emailed." : ""}`}
-    >
-      <form method="get" className="mb-4">
-        <input
-          name="q"
-          defaultValue={q ?? ""}
-          placeholder="Search by name or student ID"
-          className="w-full max-w-sm rounded-[2px] border border-[var(--rule)] border-b-2 border-b-[var(--ink-soft)] bg-[var(--paper-raised)] px-3 py-2 text-sm"
-        />
-      </form>
+    <>
+      <PageHeader
+        title="Students"
+        meta={
+          <Meta
+            items={[
+              `${total.toLocaleString("en-PH")} on file`,
+              q ? `${rows.length} match “${q}”` : null,
+              unclaimed > 0 ? `${unclaimed} have not claimed an account` : null,
+            ]}
+          />
+        }
+      />
 
-      {rows.length === 0 ? (
-        <p className="text-sm text-[var(--ink-soft)]">
-          No students yet.{" "}
-          <Link href="/setup#import" className="font-medium text-[var(--brand)] underline underline-offset-2">
-            Import them from a spreadsheet
-          </Link>
-          , and each one gets an activation code to claim their account.
-        </p>
-      ) : (
-        <Table
-          head={[
-            "Student",
-            "ID",
-            "Section",
-            "Account",
-            ...(canSeeCodes ? ["Activation code", "Parent code"] : []),
-          ]}
-        >
-          {rows.map((r) => (
-            <tr key={r.id}>
-              <td className="py-2 pr-5 font-medium">
-                {r.lastName}, {r.firstName}
-              </td>
-              <td className="py-2 pr-5 tabular-nums">{r.studentNumber}</td>
-              <td className="py-2 pr-5">
-                {r.level ? `${r.level} ${r.section}` : "—"}
-              </td>
-              <td className="py-2 pr-5">
-                {r.claimedAt ? "Claimed" : "Not claimed"}
-              </td>
-              {canSeeCodes && (
-                <>
-                  <td className="py-2 pr-5 font-mono text-[0.8125rem] tracking-[0.06em]">
-                    {r.claimedAt ? "—" : r.activationCode}
-                  </td>
-                  <td className="py-2 pr-5 font-mono text-[0.8125rem] tracking-[0.06em]">{r.parentCode}</td>
-                </>
-              )}
-            </tr>
-          ))}
-        </Table>
-      )}
-    </Section>
+      <Section title="Find a student">
+        <form method="get" className="flex flex-wrap items-end gap-3">
+          <label className="block min-w-0 flex-1">
+            <span className="mb-1.5 block text-sm font-medium">Name or student ID</span>
+            <Input name="q" defaultValue={q ?? ""} placeholder="Type a surname" />
+          </label>
+          <Button type="submit" variant="secondary">
+            Search
+          </Button>
+        </form>
+      </Section>
+
+      <Section
+        title="Class list"
+        subtitle={
+          canSeeCodes
+            ? "Codes are printed and handed out on paper, never emailed. A claimed ID cannot be claimed again."
+            : undefined
+        }
+        flush={rows.length > 0}
+      >
+        {rows.length === 0 ? (
+          <EmptyState title={q ? "No student matches that" : "No students yet"}>
+            {q ? (
+              <>Check the spelling, or clear the search to see all {total}.</>
+            ) : (
+              <>
+                <Link href="/setup#import" className="font-medium underline underline-offset-2">
+                  Import them from a spreadsheet
+                </Link>{" "}
+                and each one gets an activation code to claim their account.
+              </>
+            )}
+          </EmptyState>
+        ) : (
+          <Table
+            head={[
+              "Student",
+              "ID",
+              "Section",
+              "Account",
+              ...(canSeeCodes ? ["Activation code", "Parent code"] : []),
+            ]}
+            minWidth={canSeeCodes ? 760 : 520}
+          >
+            {rows.map((r) => (
+              <tr key={r.id}>
+                <th scope="row" className="text-left font-medium">
+                  {r.lastName}, {r.firstName}
+                </th>
+                <td className="text-muted">{r.studentNumber}</td>
+                <td>{r.level ? `${r.level} ${r.section}` : "—"}</td>
+                <td>
+                  {r.claimedAt ? <Pill tone="ok">Claimed</Pill> : <Pill>Not claimed</Pill>}
+                </td>
+                {canSeeCodes && (
+                  <>
+                    <td className="font-mono tracking-[0.06em]">
+                      {r.claimedAt ? "—" : r.activationCode}
+                    </td>
+                    <td className="font-mono tracking-[0.06em]">{r.parentCode}</td>
+                  </>
+                )}
+              </tr>
+            ))}
+          </Table>
+        )}
+      </Section>
+    </>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect } from "react";
-import { Banner, Button, Field, Input } from "@/components/ui";
+import { Button, Callout, Field, Input } from "@/components/ui";
 import { signIn } from "./actions";
 
 export default function LoginForm() {
@@ -13,16 +13,22 @@ export default function LoginForm() {
   }, [state]);
 
   return (
-    <form action={action} className="grid gap-4">
-      {state?.error && <Banner tone="danger">{state.error}</Banner>}
-      <Field label="Email or student ID">
-        <Input name="identifier" autoComplete="username" required />
+    <form action={action} className="flex flex-col gap-4">
+      {state?.error && <Callout tone="danger">{state.error}</Callout>}
+      <Field label="Email or student ID" htmlFor="identifier">
+        <Input id="identifier" name="identifier" autoComplete="username" required />
       </Field>
-      <Field label="Password">
-        <Input name="password" type="password" autoComplete="current-password" required />
+      <Field label="Password" htmlFor="password">
+        <Input
+          id="password"
+          name="password"
+          type="password"
+          autoComplete="current-password"
+          required
+        />
       </Field>
-      <Button type="submit" disabled={pending}>
-        {pending ? "Signing in…" : "Sign in"}
+      <Button type="submit" size="lg" disabled={pending}>
+        {pending ? "Signing in" : "Sign in"}
       </Button>
     </form>
   );

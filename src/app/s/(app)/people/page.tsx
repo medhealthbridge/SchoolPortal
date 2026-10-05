@@ -5,7 +5,7 @@ import { invites, userRoles, users } from "@/db/schema";
 import { requirePermission } from "@/lib/guard";
 import { ROLE_LABELS, ROLE_SCOPES, STAFF_ROLES } from "@/lib/roles";
 import { ActionForm } from "@/components/action-form";
-import { Section, Field, Input, Select, Table } from "@/components/ui";
+import { Field, Input, PageHeader, Pill, Section, Select, Table } from "@/components/ui";
 import { inviteStaff } from "../setup/actions";
 
 export const metadata = { title: "People" };
@@ -37,7 +37,11 @@ export default async function PeoplePage() {
   }
 
   return (
-    <div className="grid gap-5">
+    <>
+      <PageHeader
+        title="People"
+        meta={`${data.staff.length} accounts, ${data.pending.filter((i) => !i.acceptedAt).length} invites open`}
+      />
       <Section
         title="Invite staff"
         subtitle="Staff accounts are invite-only. There is no public staff signup."
@@ -61,33 +65,33 @@ export default async function PeoplePage() {
         </ActionForm>
       </Section>
 
-      <Section title="People" subtitle={`${data.staff.length} accounts`}>
+      <Section title="Accounts" subtitle="Staff are invited; students and parents claim their own." flush>
         <Table head={["Name", "Email", "Roles", "Status"]}>
           {data.staff.map((u) => (
             <tr key={u.id}>
-              <td className="py-2 pr-5 font-medium">{u.name}</td>
-              <td className="py-2 pr-5">{u.email ?? "—"}</td>
-              <td className="py-2 pr-5">
+              <td className="font-medium">{u.name}</td>
+              <td>{u.email ?? "—"}</td>
+              <td>
                 {(rolesByUser.get(u.id) ?? []).map((r) => ROLE_LABELS[r as never] ?? r).join(", ") ||
                   "—"}
               </td>
-              <td className="py-2 pr-5">{u.status}</td>
+              <td><Pill tone={u.status === "active" ? "ok" : "neutral"}>{u.status}</Pill></td>
             </tr>
           ))}
         </Table>
       </Section>
 
       {data.pending.filter((i) => !i.acceptedAt).length > 0 && (
-        <Section title="Invites not yet accepted">
+        <Section title="Invites not yet accepted" flush>
           <Table head={["Name", "Email", "Role", "Link"]}>
             {data.pending
               .filter((i) => !i.acceptedAt)
               .map((i) => (
                 <tr key={i.id}>
-                  <td className="py-2 pr-5">{i.name}</td>
-                  <td className="py-2 pr-5">{i.email}</td>
-                  <td className="py-2 pr-5">{ROLE_LABELS[i.role as never] ?? i.role}</td>
-                  <td className="py-2 pr-5">
+                  <td>{i.name}</td>
+                  <td>{i.email}</td>
+                  <td>{ROLE_LABELS[i.role as never] ?? i.role}</td>
+                  <td>
                     <a className="brand-text underline" href={`/invite/${i.token}`}>
                       /invite/{i.token.slice(0, 8)}…
                     </a>
@@ -105,7 +109,7 @@ export default async function PeoplePage() {
             Checked on the server for every request, not just hidden from the
             menu. Students and parents claim their own accounts with the codes
             on the{" "}
-            <Link href="/students" className="font-medium text-[var(--brand)] underline underline-offset-2">
+            <Link href="/students" className="font-medium text-primary underline underline-offset-2">
               Students
             </Link>{" "}
             page.
@@ -115,12 +119,12 @@ export default async function PeoplePage() {
         <Table head={["Role", "Scope"]}>
           {STAFF_ROLES.concat(["parent", "student"]).map((r) => (
             <tr key={r}>
-              <td className="py-2 pr-5 font-medium">{ROLE_LABELS[r]}</td>
-              <td className="py-2 pr-5">{ROLE_SCOPES[r]}</td>
+              <td className="font-medium">{ROLE_LABELS[r]}</td>
+              <td>{ROLE_SCOPES[r]}</td>
             </tr>
           ))}
         </Table>
       </Section>
-    </div>
+    </>
   );
 }
