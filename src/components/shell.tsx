@@ -59,7 +59,11 @@ export function AppShell({
         <div className="flex items-center gap-2.5 px-2 py-1.5">
           <span
             aria-hidden
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-control bg-primary text-[13px] font-semibold text-[#FAFAFA]"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-control text-[13px] font-semibold"
+            style={{
+              background: "var(--school-badge, var(--primary))",
+              color: "var(--school-badge-fg, #FAFAFA)",
+            }}
           >
             {brand
               .split(/\s+/)

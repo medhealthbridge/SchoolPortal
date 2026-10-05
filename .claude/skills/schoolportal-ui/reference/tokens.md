@@ -99,3 +99,15 @@ outline-offset: 2px;
 Applied globally in `globals.css` to `:focus-visible`. Never remove it, and
 never replace it with a shadow — it has to survive on both the white surface
 and the near-black primary button.
+
+## A school's own colour
+
+`schools.primary_color` is real data and a school expects to see it. The
+system is neutral by design, so it appears in exactly one place: the brand
+badge in the sidebar, the phone header and the sign-in page.
+
+`brandStyle()` in `src/lib/brand.ts` sets `--school-badge` and, from the WCAG
+relative luminance of that colour, `--school-badge-fg` — so the initials stay
+readable whether a school picks navy or lemon. Nothing else reads those
+variables, and nothing else should: a primary button is near-black at every
+school.

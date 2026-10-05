@@ -16,7 +16,11 @@ export default async function LoginPage() {
       <div className="mb-6">
         <span
           aria-hidden
-          className="mb-4 flex h-10 w-10 items-center justify-center rounded-control bg-primary text-sm font-semibold text-[#FAFAFA]"
+          className="mb-4 flex h-10 w-10 items-center justify-center rounded-control text-sm font-semibold"
+          style={{
+            background: "var(--school-badge, var(--primary))",
+            color: "var(--school-badge-fg, #FAFAFA)",
+          }}
         >
           {school?.name
             .split(/\s+/)

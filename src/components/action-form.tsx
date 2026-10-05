@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { Banner, Button } from "./ui";
+import { Button, Callout } from "./ui";
 
 export type ActionResult = { ok?: string; error?: string; issues?: string[] } | null;
 export type Action = (prev: ActionResult, form: FormData) => Promise<ActionResult>;
@@ -21,7 +21,7 @@ export function ActionForm({
   return (
     <form action={dispatch} className="grid gap-4">
       {state?.error && (
-        <Banner tone="danger">
+        <Callout tone="danger">
           {state.error}
           {state.issues && (
             <ul className="mt-2 list-disc space-y-0.5 pl-5">
@@ -30,9 +30,9 @@ export function ActionForm({
               ))}
             </ul>
           )}
-        </Banner>
+        </Callout>
       )}
-      {state?.ok && <Banner>{state.ok}</Banner>}
+      {state?.ok && <Callout tone="ok">{state.ok}</Callout>}
       <div className={className}>{children}</div>
       <div>
         <Button type="submit" disabled={pending}>
