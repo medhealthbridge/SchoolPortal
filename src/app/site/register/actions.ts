@@ -2,23 +2,12 @@
 
 import { and, eq, gt } from "drizzle-orm";
 import { z } from "zod";
-import { db, withPlatform, withTenant } from "@/db";
-import {
-  branches,
-  emailVerifications,
-  schools,
-  subscriptions,
-  userRoles,
-  users,
-} from "@/db/schema";
+import { db } from "@/db";
+import { emailVerifications } from "@/db/schema";
 import { activationCode, hashPassword } from "@/lib/password";
 import { deliver } from "@/lib/messaging";
-import { audit } from "@/lib/audit";
-import { applyTierModules, subdomainAvailable, subdomainProblem } from "@/lib/tenant";
-import { PER_STUDENT_CENTAVOS, platformFeeCentavos } from "@/lib/pricing";
-import { todayIso } from "@/lib/format";
-
-const TRIAL_DAYS = 30;
+import { subdomainAvailable, subdomainProblem } from "@/lib/tenant";
+import { createSchoolWithOwner } from "@/lib/onboarding";
 
 export async function sendVerificationCode(email: string) {
   const parsed = z.string().email().safeParse(email.trim().toLowerCase());
@@ -30,15 +19,29 @@ export async function sendVerificationCode(email: string) {
     code,
     expiresAt: new Date(Date.now() + 30 * 60_000),
   });
-  await deliver({
+  const sent = await deliver({
     channel: "email",
     to: parsed.data,
     subject: "Your SchoolPortal verification code",
     body: `Your verification code is ${code}. It expires in 30 minutes.`,
   });
 
-  // Dev convenience: no mail provider is wired up yet, so the code comes back
-  // to the screen. In production `deliver()` sends it and this is dropped.
+  // A code nobody can receive is a dead end that looks like a working form:
+  // the visitor waits for an email that was never going to come. Say so.
+  if (sent.status === "failed") {
+    return { ok: false as const, error: "The email could not be sent. Try again in a minute." };
+  }
+  if (sent.status === "held" && process.env.NODE_ENV === "production") {
+    return {
+      ok: false as const,
+      error:
+        "This site cannot send email yet, so new schools cannot register on their own. " +
+        "Ask the person who runs SchoolPortal to add yours.",
+    };
+  }
+
+  // Dev convenience: with no mail provider the code comes back to the screen.
+  // In production it is only ever sent, never shown.
   return {
     ok: true as const,
     devCode: process.env.NODE_ENV === "production" ? undefined : code,
@@ -110,70 +113,18 @@ export async function registerSchool(input: RegistrationInput) {
     return { ok: false as const, error: "That address is not available." };
   }
 
-  const fee = platformFeeCentavos(data.tier);
-  const passwordHash = await hashPassword(data.password);
-
-  const school = await withPlatform(async (tx) => {
-    const [row] = await tx
-      .insert(schools)
-      .values({
-        subdomain: data.subdomain.toLowerCase(),
-        name: data.schoolName,
-        type: data.type,
-        tier: data.tier,
-        status: "trial",
-        ownerName: data.ownerName,
-        ownerEmail: email,
-        ownerMobile: data.ownerMobile,
-        emailVerifiedAt: new Date(),
-        trialEndsAt: new Date(Date.now() + TRIAL_DAYS * 86_400_000),
-        onboardingStep: 5,
-      })
-      .returning();
-
-    await tx.insert(subscriptions).values({
-      schoolId: row.id,
-      tier: data.tier,
-      extraModules: [] as never,
-      platformFeeCentavos: fee,
-      perStudentCentavos: PER_STUDENT_CENTAVOS,
-      startedOn: todayIso(),
-    });
-
-    await audit(tx, {
-      schoolId: row.id,
-      actorLabel: `${data.ownerName} <${email}>`,
-      action: "school.registered",
-      entity: "schools",
-      entityId: row.id,
-      after: { subdomain: row.subdomain, tier: row.tier },
-    });
-
-    return row;
-  });
-
-  await applyTierModules(school.id, data.tier);
-
-  await withTenant(school.id, async (tx) => {
-    for (const [i, name] of data.branchNames.entries()) {
-      await tx.insert(branches).values({ schoolId: school.id, name, isMain: i === 0 });
-    }
-    const [owner] = await tx
-      .insert(users)
-      .values({
-        schoolId: school.id,
-        email,
-        name: data.ownerName,
-        phone: data.ownerMobile,
-        passwordHash,
-        status: "active",
-      })
-      .returning();
-    await tx.insert(userRoles).values({
-      schoolId: school.id,
-      userId: owner.id,
-      role: "school_admin",
-    });
+  const school = await createSchoolWithOwner({
+    subdomain: data.subdomain,
+    name: data.schoolName,
+    type: data.type,
+    tier: data.tier,
+    ownerName: data.ownerName,
+    ownerEmail: email,
+    ownerMobile: data.ownerMobile,
+    passwordHash: await hashPassword(data.password),
+    branchNames: data.branchNames,
+    actorLabel: `${data.ownerName} <${email}>`,
+    action: "school.registered",
   });
 
   const root = process.env.ROOT_DOMAIN ?? "lvh.me:3000";

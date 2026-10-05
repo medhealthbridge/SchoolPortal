@@ -36,6 +36,7 @@ const platform = await adminSession();
 const PAGES = [
   ["lvh.me", "/", null],
   ["lvh.me", "/register", null],
+  ["lvh.me", "/signin", null],
   ["stmary.lvh.me", "/login", null],
   ["stmary.lvh.me", "/signup", null],
   ["northgate.lvh.me", "/on-hold", null],

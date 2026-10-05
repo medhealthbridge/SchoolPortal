@@ -1,9 +1,11 @@
 /**
- * Creates the platform admin on a database that has none. Nothing else.
+ * Brings a fresh database to the point where a person can sign in: the platform
+ * admin, and — if the BOOTSTRAP_* variables ask for one — a first school with
+ * its owner. Nothing else.
  *
  * `db:seed` is for demos and deletes every school before it starts; this is
- * the opposite — safe to run on every production deploy, because once an admin
- * exists it does nothing at all.
+ * the opposite — safe to run on every production deploy, because once the admin
+ * and the school exist it does nothing at all.
  *
  * The account is created without an authenticator. The first sign-in enrols
  * one in the app (see src/lib/admin-auth.ts), so no second-factor key is ever
@@ -44,3 +46,23 @@ if (n > 0) {
 }
 
 await sql.end();
+
+// The first school. Registration verifies the owner's email with a code, and a
+// deployment with no mail provider cannot send one, so on day one there would
+// otherwise be no way in for anyone but the platform admin. Loaded here rather
+// than at the top: it opens the app's own connection pool, which should not
+// exist when the checks above have already decided to stop.
+const { ensureFirstSchool } = await import("../lib/onboarding");
+const { client } = await import("./index");
+try {
+  const outcome = await ensureFirstSchool();
+  if (outcome === "created") {
+    console.log(`✓ first school created at ${process.env.BOOTSTRAP_SCHOOL_SUBDOMAIN}; its owner can sign in`);
+  } else if (outcome === "exists") {
+    console.log("→ first school already exists; nothing to do");
+  }
+} catch (err) {
+  stop(err instanceof Error ? err.message : String(err));
+} finally {
+  await client.end();
+}

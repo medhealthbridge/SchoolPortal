@@ -34,6 +34,11 @@ them, and you cannot see theirs.
 Everyone signs in at `yourschool.<domain>/login` — staff, parents and
 students at the same door.
 
+If you only know the platform's address, open it and choose **Sign in** in the
+top corner. Type your school's address — the first part of the web address your
+school was given, like `stmary` — or paste the whole link, and you are taken to
+your school's sign-in page.
+
 | You are | You sign in with |
 | --- | --- |
 | Staff | The email the school admin invited, and your password |

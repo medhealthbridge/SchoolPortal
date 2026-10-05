@@ -28,6 +28,12 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
             >
               Pricing
             </Link>
+            <Link
+              href="/signin"
+              className="rounded-control px-3 py-2 text-ink no-underline hover:bg-subtle"
+            >
+              Sign in
+            </Link>
             <LinkButton href="/register" size="sm">
               Register your school
             </LinkButton>

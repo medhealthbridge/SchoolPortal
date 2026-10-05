@@ -181,6 +181,12 @@ breaks offline attendance: a school's own API lives at `/api/attendance/…`
 and relies on the rewrite into `/s`. Only `api/cron`, `api/payments` and
 `uploads/` skip it.
 
+**Registration cannot silently depend on email.** The verification code is
+sent by email, and a deployment with no provider holds it in the outbox where
+nobody can read it. `sendVerificationCode` says so in production instead of
+returning success, and `createSchoolWithOwner` (`src/lib/onboarding.ts`) is
+shared by the wizard and the first-school seeding so the two cannot drift.
+
 **React 19 resets a form after every action — including controlled inputs.**
 On the admin login this wiped the password between the first sign-in step and
 the enrolment step. The form is kept as `<form action={serverAction}>` rather
@@ -224,7 +230,7 @@ a screen looks colourful, something is wrong.
 ## Testing
 
 ```bash
-npm test     # 130 tests against a real Postgres, single fork
+npm test     # 142 tests against a real Postgres, single fork
 ```
 
 | File | Holds |
@@ -236,6 +242,7 @@ npm test     # 130 tests against a real Postgres, single fork
 | `payments.test.ts` | Checkout, webhook signatures, idempotent recording |
 | `hardening.test.ts` | Throttling, the boot check, the cron guard, delivery, and the `db`-vs-`withPlatform` scan |
 | `storage.test.ts` | Upload validation by magic bytes, path traversal, SigV4 |
+| `onboarding.test.ts` | School creation, the all-or-none first-school variables, finding a school from what a person types, and what registration does when email cannot be sent |
 | `admin-auth.test.ts` | The platform admin's first sign-in: enrolment, a wrong code keeping the same key, a weak key being replaced, and two first sign-ins racing |
 | `profile.test.ts` | The school profile's validation: names, phone shapes, colour as `#RRGGBB` only, and the badge's contrast |
 | `pricing.test.ts`, `units.test.ts` | Pure functions |

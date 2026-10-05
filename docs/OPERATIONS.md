@@ -73,7 +73,7 @@ secret and the code valid at that moment.
 | `npm run db:generate` | Writes `drizzle/NNNN_*.sql` from a schema change |
 | `npm run db:migrate` | Applies migrations, grants and RLS |
 | `npm run db:seed` | Demo data. **Deletes every school and the platform admin first**, so it refuses any database that is not on this machine unless given `--force-remote` |
-| `npm run db:bootstrap` | Creates the platform admin on a database that has none, and does nothing once one exists. Safe on every deploy |
+| `npm run db:bootstrap` | Creates the platform admin on a database that has none, and a first school if the `BOOTSTRAP_*` variables ask for one. Does nothing once they exist, so it is safe on every deploy |
 | `npm run db:reset` | Drops the `public` and `drizzle` schemas — destroys everything, including the record of which migrations ran |
 | `npm run responsive` | 27 screens × 7 widths, fails on horizontal scroll |
 | `npm run smoke` | End-to-end against a running dev server |
@@ -160,8 +160,30 @@ Set these as Production environment variables, marking the secrets
 | `APP_USER_PASSWORD` | The password `db:migrate` gives `app_user`; must match `APP_DATABASE_URL`. Letters and digits only, since it sits inside a URL. |
 | `ROOT_DOMAIN`, `NEXT_PUBLIC_ROOT_DOMAIN` | The domain schools are subdomains of |
 | `PLATFORM_ADMIN_EMAIL`, `PLATFORM_ADMIN_PASSWORD` | Read only by `db:bootstrap`, and only when no admin exists |
+| `BOOTSTRAP_SCHOOL_SUBDOMAIN`, `BOOTSTRAP_SCHOOL_NAME`, `BOOTSTRAP_OWNER_EMAIL`, `BOOTSTRAP_OWNER_PASSWORD` | Optional, **all four or none**: creates a first school and its owner, once. See below |
 | `CRON_SECRET` | Vercel sends it to the cron endpoint automatically |
 | `ALLOW_LOCAL_UPLOADS` | `yes` — and see below |
+
+### The first school
+
+Registering a school verifies the owner's email with a code, and a deployment
+with no mail provider cannot send one. Rather than leave a dead end that looks
+like a working form, the wizard now says "this site cannot send email yet" in
+production, and `db:bootstrap` can create the first school directly.
+
+Set the four `BOOTSTRAP_*` variables above (and optionally
+`BOOTSTRAP_OWNER_NAME`, default "School admin", and `BOOTSTRAP_SCHOOL_TIER`,
+default `all_in`). The next production deploy creates the school on a 30-day
+trial with every module its tier includes, and an owner with the school-admin
+role who can sign in at `https://<subdomain>.<ROOT_DOMAIN>/login`.
+
+- **All four or none.** Setting some and not others stops the deploy and names
+  what is missing; a deploy that quietly skipped half of what was asked for is
+  worse than one that stops.
+- **Safe on every deploy.** If the subdomain exists it does nothing, so the
+  variables can stay or be removed afterwards.
+- **To add more schools** before email is configured, change the subdomain and
+  deploy again, or set up a mail provider and let schools register themselves.
 
 **Uploads do not work on Vercel until S3 is configured.** The filesystem there
 is read-only, so a logo upload fails with "The file could not be stored".
@@ -475,7 +497,7 @@ Test a restore before you need one.
 
 ```bash
 npm run typecheck
-npm test                 # 130 tests, including the cross-tenant isolation gate
+npm test                 # 142 tests, including the cross-tenant isolation gate
 npm run build
 npm run responsive       # needs the dev server and a seeded database
 npm run smoke            # same
