@@ -70,7 +70,12 @@ for (const w of WIDTHS) {
   for (const [host, path, sid, cookie = "sp_session"] of PAGES) {
     if (sid) await ctx.addCookies([{ name: cookie, value: sid, domain: host, path: "/" }]);
     const p = await ctx.newPage();
-    const res = await p.goto(`http://${host}:3000${path}`, { waitUntil: "networkidle" });
+    // 60s, not Playwright's default 30: against `next dev` the first request
+    // to a route compiles it, and a cold route can take most of a minute.
+    const res = await p.goto(`http://${host}:3000${path}`, {
+      waitUntil: "networkidle",
+      timeout: 60_000,
+    });
     const m = await p.evaluate(() => ({
       scroll: document.documentElement.scrollWidth,
       client: document.documentElement.clientWidth,

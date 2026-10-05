@@ -341,10 +341,12 @@ export function StatTile({
 
 export function StatGrid({ children }: { children: ReactNode }) {
   return (
-    <div
-      className="grid gap-4"
-      style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(180px, 100%), 1fr))" }}
-    >
+    // Fixed counts rather than auto-fit. Auto-fit wanted a minimum wide
+    // enough for the longest value, which left a phone with one tile per row
+    // and a wide desktop with eight across and every label wrapped.
+    // One column under 380px: at 320 a peso figure like ₱109,800 is wider
+    // than half the screen, and two columns push the page sideways.
+    <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2 sm:grid-cols-3 sm:gap-4 xl:grid-cols-4">
       {children}
     </div>
   );
@@ -627,16 +629,18 @@ export function Callout({
   return (
     <div
       role="status"
-      className="flex items-start gap-3 rounded-panel border border-line bg-surface px-4 py-3"
+      className="flex flex-wrap items-start gap-x-3 gap-y-3 rounded-panel border border-line bg-surface px-4 py-3"
     >
       <span className="mt-0.5 shrink-0" style={{ color }}>
         {glyph}
       </span>
-      <div className="min-w-0 flex-1">
+      {/* basis-56 so a phone drops the action to its own line instead of
+          squeezing the sentence into three words a line. */}
+      <div className="min-w-0 flex-1 basis-56">
         {title && <div className="font-medium tracking-[-0.01em]">{title}</div>}
         {children && <div className="text-muted">{children}</div>}
       </div>
-      {action && <div className="shrink-0 self-center">{action}</div>}
+      {action && <div className="ml-7 shrink-0 self-center sm:ml-0">{action}</div>}
     </div>
   );
 }

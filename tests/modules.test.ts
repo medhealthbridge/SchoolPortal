@@ -7,8 +7,13 @@ import {
   gradingPeriods,
   guidanceCases,
   incidents,
+  activities,
+  clubMemberships,
+  clubs,
   registrarRequests,
   sanctions,
+  schoolYears,
+  serviceHours,
   scores,
   studentCharges,
   studentPayments,
@@ -17,6 +22,7 @@ import { reportCard, PASSING_SCORE } from "@/modules/grades/queries";
 import { balanceFor, studentsOwing } from "@/modules/billing/queries";
 import { clearanceFor } from "@/modules/registrar/clearance";
 import { enabledModules } from "@/lib/tenant";
+import { activitiesWithCredits, clubsWithMembers } from "@/modules/community/queries";
 import { processEvents } from "@/lib/events";
 import { emit } from "@/lib/audit";
 import { dropSchool, makeSchool } from "./helpers";
@@ -401,5 +407,120 @@ describe("the links between modules", () => {
         ),
     );
     expect(after.length).toBe(before.length);
+  });
+});
+
+/**
+ * "Every level" is a null level, and Postgres counts nulls as distinct unless
+ * told otherwise — so the upsert behind "Save fee" quietly inserted a second
+ * row for the commonest case, and each of the two charged every student.
+ */
+describe("a fee saved twice", () => {
+  it("stays one fee, even when it applies to every level", async () => {
+    const { school } = await makeSchool();
+    const year = await withTenant(school.id, async (tx) => {
+      const [row] = await tx
+        .select()
+        .from(schoolYears)
+        .where(and(eq(schoolYears.schoolId, school.id), eq(schoolYears.isCurrent, true)))
+        .limit(1);
+      return row!;
+    });
+
+    const save = (amountCentavos: number) =>
+      withTenant(school.id, (tx) =>
+        tx
+          .insert(feeItems)
+          .values({
+            schoolId: school.id,
+            schoolYearId: year.id,
+            name: "Laboratory fee",
+            amountCentavos,
+            level: null,
+            dueOn: null,
+          })
+          .onConflictDoUpdate({
+            target: [feeItems.schoolYearId, feeItems.name, feeItems.level],
+            set: { amountCentavos },
+          }),
+      );
+
+    await save(75_000);
+    await save(80_000);
+
+    const rows = await withTenant(school.id, (tx) =>
+      tx
+        .select()
+        .from(feeItems)
+        .where(and(eq(feeItems.schoolYearId, year.id), eq(feeItems.name, "Laboratory fee"))),
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.amountCentavos).toBe(80_000);
+  });
+});
+
+/**
+ * Both of these counts were once correlated subqueries written with drizzle's
+ * `sql` template. Drizzle renders ${table.column} as a bare "column" when the
+ * outer select has no join, so inside the subquery it bound to the subquery's
+ * own table — sh.activity_id = sh.id — and every count came back zero with no
+ * error anywhere. The screens read "0 memberships" and "Nobody yet" while the
+ * rows were plainly there.
+ */
+describe("the SAO counts", () => {
+  let fixture: Awaited<ReturnType<typeof makeSchool>>;
+  beforeAll(async () => {
+    fixture = await makeSchool();
+  });
+  afterAll(async () => {
+    await dropSchool(fixture.school.id);
+  });
+
+  it("counts a club's members and an activity's credits, not zero", async () => {
+    const { school, students: roster } = fixture;
+
+    const [club] = await withTenant(school.id, (tx) =>
+      tx.insert(clubs).values({ schoolId: school.id, name: "Chess Club" }).returning(),
+    );
+    await withTenant(school.id, (tx) =>
+      tx.insert(clubMemberships).values(
+        roster.map((student: { id: string }) => ({
+          schoolId: school.id,
+          clubId: club!.id,
+          studentId: student.id,
+        })),
+      ),
+    );
+
+    const [activity] = await withTenant(school.id, (tx) =>
+      tx
+        .insert(activities)
+        .values({
+          schoolId: school.id,
+          kind: "sao_event",
+          name: "Tree planting",
+          onDate: "2026-09-05",
+          serviceHours: 3,
+        })
+        .returning(),
+    );
+    await withTenant(school.id, (tx) =>
+      tx.insert(serviceHours).values(
+        roster.map((student: { id: string }) => ({
+          schoolId: school.id,
+          studentId: student.id,
+          activityId: activity!.id,
+          hours: 3,
+        })),
+      ),
+    );
+
+    const withMembers = await withTenant(school.id, (tx) => clubsWithMembers(tx, school.id));
+    expect(withMembers.find((c) => c.row.name === "Chess Club")?.members).toBe(roster.length);
+
+    const withCredits = await withTenant(school.id, (tx) =>
+      activitiesWithCredits(tx, school.id, "sao_event"),
+    );
+    expect(withCredits.find((a) => a.row.name === "Tree planting")?.credited).toBe(roster.length);
   });
 });

@@ -26,6 +26,27 @@ export async function openCase(_prev: Result, form: FormData): Promise<Result> {
       .limit(1);
     if (!student) return { error: `No student here has the ID ${studentNumber}.` };
 
+    // The same guard the attendance-streak listener already applies: a case
+    // with this title, still open for this student, is this case. Without it
+    // a double-click leaves a counsellor with two of everything to work.
+    const [already] = await tx
+      .select()
+      .from(guidanceCases)
+      .where(
+        and(
+          eq(guidanceCases.schoolId, school.id),
+          eq(guidanceCases.studentId, student.id),
+          eq(guidanceCases.title, title),
+          eq(guidanceCases.status, "open"),
+        ),
+      )
+      .limit(1);
+    if (already) {
+      return {
+        ok: `${student.firstName} already has an open case called "${title}". Nothing was added.`,
+      };
+    }
+
     const [row] = await tx
       .insert(guidanceCases)
       .values({

@@ -910,7 +910,11 @@ export const feeItems = pgTable(
     level: text("level"),
     dueOn: date("due_on"),
   },
-  (t) => [unique("fee_items_uq").on(t.schoolYearId, t.name, t.level)],
+  // nullsNotDistinct, because "every level" is a null level and Postgres
+  // counts nulls as different from each other: without it the upsert in
+  // addFeeItem never fires for the commonest case, and saving the same fee
+  // twice leaves two rows that each charge every student.
+  (t) => [unique("fee_items_uq").on(t.schoolYearId, t.name, t.level).nullsNotDistinct()],
 );
 
 export const studentCharges = pgTable(

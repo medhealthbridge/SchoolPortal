@@ -38,12 +38,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const nav: NavItem[] = [
     { href: "/", label: "Today", icon: <CalendarIcon />, primary: true, group: "School" },
     ...entry(
-      { href: "/attendance", label: "Attendance", icon: <ClipboardCheckIcon />, primary: true, group: "School" },
+      { href: "/attendance", label: "Attendance", short: "Classes", icon: <ClipboardCheckIcon />, primary: true, group: "School" },
       ["attendance.take"],
       "attendance",
     ),
     ...entry(
-      { href: "/attendance/report", label: "Attendance report", icon: <ReportIcon />, group: "School" },
+      { href: "/attendance/report", label: "Attendance report", short: "Report", icon: <ReportIcon />, group: "School" },
       ["attendance.view_all"],
       "attendance",
     ),
@@ -53,12 +53,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       "grades",
     ),
     ...entry(
-      { href: "/announcements", label: "Announcements", icon: <InfoIcon />, group: "School" },
+      { href: "/announcements", label: "Announcements", short: "Notices", icon: <InfoIcon />, group: "School" },
       ["portal.post", "attendance.view_own_children", "attendance.view_own", "students.view"],
       "portal",
     ),
     ...entry(
-      { href: "/me", label: "My records", icon: <PeopleIcon />, primary: true, group: "School" },
+      { href: "/me", label: "My records", short: "Records", icon: <PeopleIcon />, primary: true, group: "School" },
       ["attendance.view_own_children", "attendance.view_own", "grades.view_own"],
     ),
     ...entry(
@@ -77,7 +77,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       "guidance",
     ),
     ...entry(
-      { href: "/sao", label: "Student affairs", icon: <GridIcon />, group: "Student life" },
+      { href: "/sao", label: "Student affairs", short: "Affairs", icon: <GridIcon />, group: "Student life" },
       ["sao.manage"],
       "sao",
     ),
@@ -93,7 +93,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       "registrar",
     ),
     ...entry(
-      { href: "/fees", label: "School fees", icon: <CardIcon />, group: "Operations" },
+      { href: "/fees", label: "School fees", short: "Fees", icon: <CardIcon />, group: "Operations" },
       ["fees.manage"],
       "billing",
     ),
@@ -112,10 +112,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     ...entry({ href: "/modules", label: "Modules", icon: <GridIcon />, group: "Manage" }, [
       "school.manage",
     ]),
-    ...entry({ href: "/billing", label: "Subscription", icon: <CardIcon />, group: "Manage" }, [
+    ...entry({ href: "/billing", label: "Subscription", short: "Plan", icon: <CardIcon />, group: "Manage" }, [
       "school.billing.view",
     ]),
-    ...entry({ href: "/audit", label: "Audit log", icon: <LockIcon />, group: "Manage" }, [
+    ...entry({ href: "/audit", label: "Audit log", short: "Audit", icon: <LockIcon />, group: "Manage" }, [
       "audit.view",
     ]),
   ];

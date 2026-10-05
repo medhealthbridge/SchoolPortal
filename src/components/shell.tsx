@@ -46,6 +46,12 @@ function BrandMark({ brand, logoUrl }: { brand: string; logoUrl?: string | null 
 export type NavItem = {
   href: string;
   label: string;
+  /**
+   * What the phone tab bar calls it. A tab is about 70px wide, so a label of
+   * more than one word truncates to "Attendanc…" — give those a short form
+   * rather than letting the bar cut them.
+   */
+  short?: string;
   icon: ReactNode;
   /** Shown in the phone tab bar as well as the sidebar. */
   primary?: boolean;
@@ -181,7 +187,7 @@ export function AppShell({
               }`}
             >
               {item.icon}
-              <span className="max-w-full truncate px-1">{item.label}</span>
+              <span className="max-w-full truncate px-1">{item.short ?? item.label}</span>
             </Link>
           );
         })}

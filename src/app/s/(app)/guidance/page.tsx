@@ -92,7 +92,7 @@ export default async function GuidancePage() {
         <StatTile
           label="Referred in"
           value={referred.length}
-          caption="From attendance, grades or discipline"
+          caption="Someone else raised it, not a walk-in"
         />
         <StatTile label="Appointments" value={data.upcoming.length} caption="Scheduled" />
       </StatGrid>

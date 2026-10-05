@@ -14,6 +14,15 @@ export const metadata: Metadata = {
   description:
     "Attendance a teacher can take walking the room with no signal, and the modules a school switches on as it needs them.",
   manifest: "/manifest.webmanifest",
+  // Named rather than left to convention: every browser asks for
+  // /favicon.ico on every page, and without this each one answers 404.
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "192x192" },
+      { url: "/icons/icon-192.png", type: "image/png", sizes: "192x192" },
+    ],
+    apple: "/icons/icon-192.png",
+  },
 };
 
 export const viewport: Viewport = {

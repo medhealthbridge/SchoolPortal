@@ -1,6 +1,7 @@
 import { asc, count, desc, eq, sql, and } from "drizzle-orm";
 import { withTenant } from "@/db";
-import { activities, clubMemberships, clubs, sections, serviceHours } from "@/db/schema";
+import { sections, serviceHours } from "@/db/schema";
+import { activitiesWithCredits, clubsWithMembers } from "./queries";
 import { ActionForm } from "@/components/action-form";
 import {
   EmptyState,
@@ -36,34 +37,13 @@ export async function CommunityPage({
   withClubs: boolean;
 }) {
   const data = await withTenant(schoolId, async (tx) => ({
-    activities: await tx
-      .select({
-        row: activities,
-        credited: sql<number>`(
-          select count(*) from service_hours sh where sh.activity_id = ${activities.id}
-        )`,
-      })
-      .from(activities)
-      .where(and(eq(activities.schoolId, schoolId), eq(activities.kind, kind)))
-      .orderBy(desc(activities.onDate))
-      .limit(50),
+    activities: await activitiesWithCredits(tx, schoolId, kind),
     sectionList: await tx
       .select({ id: sections.id, level: sections.level, name: sections.name })
       .from(sections)
       .where(eq(sections.schoolId, schoolId))
       .orderBy(asc(sections.level), asc(sections.name)),
-    clubs: withClubs
-      ? await tx
-          .select({
-            row: clubs,
-            members: sql<number>`(
-              select count(*) from club_memberships m where m.club_id = ${clubs.id}
-            )`,
-          })
-          .from(clubs)
-          .where(eq(clubs.schoolId, schoolId))
-          .orderBy(asc(clubs.name))
-      : [],
+    clubs: withClubs ? await clubsWithMembers(tx, schoolId) : [],
     hours: await tx
       .select({ total: sql<number>`coalesce(sum(${serviceHours.hours}), 0)`, n: count() })
       .from(serviceHours)

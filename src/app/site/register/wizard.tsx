@@ -144,11 +144,16 @@ export default function RegisterWizard() {
             </Field>
 
             {!emailVerified && (
-              <div className="rounded-control border border-line bg-surface p-4">
+              <div className="grid gap-2 rounded-control border border-line bg-subtle p-4">
                 {!codeSent ? (
+                  <>
+                    <p className="text-sm text-muted">
+                      We send a code to that address and check it before the
+                      school is created.
+                    </p>
                   <Button
                     type="button"
-                    variant="ghost"
+                    variant="secondary"
                     disabled={pending || !ownerEmail}
                     onClick={() =>
                       startTransition(async () => {
@@ -162,6 +167,7 @@ export default function RegisterWizard() {
                   >
                     Send verification code
                   </Button>
+                  </>
                 ) : (
                   <div className="grid gap-3">
                     <Field

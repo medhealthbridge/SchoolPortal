@@ -66,11 +66,17 @@ export async function seedModules(ctx: ModuleSeedContext) {
     }
 
     // A spread that looks like a real class: most in the 80s, a few below 75.
-    for (const period of periods.slice(0, 2)) {
+    // The quarters have to differ, or a demo of the Grades page reads as a
+    // page that ignores which period you asked for.
+    for (const [pi, period] of periods.slice(0, 2).entries()) {
+      const drift = pi * 3; // the class picks up a little by the second quarter
       for (const [si, studentId] of ctx.studentIds.entries()) {
         for (const [ji, subjectId] of ctx.subjectIds.entries()) {
-          const base = 78 + ((si * 7 + ji * 11) % 18);
-          const score = si % 13 === 3 ? 68 + (ji % 5) : base;
+          const base = 78 + ((si * 7 + ji * 11 + pi * 5) % 18) + drift;
+          const score = Math.min(
+            99,
+            si % 13 === 3 ? 68 + ((ji + pi) % 5) : base,
+          );
           await tx
             .insert(scores)
             .values({
