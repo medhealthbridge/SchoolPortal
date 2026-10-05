@@ -7,26 +7,8 @@ import { studentGuardians, students, userRoles, users } from "@/db/schema";
 import { hashPassword } from "@/lib/password";
 import { audit } from "@/lib/audit";
 import { createSchoolSession, currentSchool } from "@/lib/session";
-
-/**
- * Rate limit on student-ID signup so IDs cannot be guessed in bulk. In-memory
- * is enough for one instance; behind several, move the counter to Postgres or
- * the edge store — the shape stays the same.
- */
-const attempts = new Map<string, { count: number; resetAt: number }>();
-const WINDOW_MS = 10 * 60_000;
-const MAX_ATTEMPTS = 8;
-
-function tooManyAttempts(key: string) {
-  const now = Date.now();
-  const row = attempts.get(key);
-  if (!row || row.resetAt < now) {
-    attempts.set(key, { count: 1, resetAt: now + WINDOW_MS });
-    return false;
-  }
-  row.count += 1;
-  return row.count > MAX_ATTEMPTS;
-}
+import { attempt, retryMessage, SIGNUP } from "@/lib/throttle";
+import { clientIp } from "@/lib/request";
 
 type Result = ({ error?: string } & Partial<Navigation>) | null;
 
@@ -41,8 +23,8 @@ export async function studentSignUp(_prev: Result, formData: FormData): Promise<
   const email = String(formData.get("email") ?? "").trim().toLowerCase() || null;
   const password = String(formData.get("password") ?? "");
 
-  if (tooManyAttempts(`${school.id}:student`))
-    return { error: "Too many attempts. Try again in a few minutes." };
+  const limit = await attempt(`signup-student:${school.id}:${await clientIp()}`, SIGNUP);
+  if (!limit.allowed) return { error: retryMessage(limit.retryInSeconds) };
   if (password.length < 8) return { error: "Use a password of at least 8 characters." };
 
   const outcome = await withTenant(school.id, async (tx) => {
@@ -105,8 +87,8 @@ export async function parentSignUp(_prev: Result, formData: FormData): Promise<R
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
 
-  if (tooManyAttempts(`${school.id}:parent`))
-    return { error: "Too many attempts. Try again in a few minutes." };
+  const limit = await attempt(`signup-parent:${school.id}:${await clientIp()}`, SIGNUP);
+  if (!limit.allowed) return { error: retryMessage(limit.retryInSeconds) };
   if (!email) return { error: "Enter your email address." };
   if (password.length < 8) return { error: "Use a password of at least 8 characters." };
 

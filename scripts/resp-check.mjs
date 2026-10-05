@@ -17,6 +17,12 @@ async function session(host, email) {
   return execSync(`npx tsx scripts/make-session.ts ${host} ${email}`).toString().trim();
 }
 
+/** The platform admin signs in with a TOTP code, so the sweep mints one instead. */
+async function adminSession() {
+  const { execSync } = await import("node:child_process");
+  return execSync("npx tsx scripts/make-admin-session.ts").toString().trim();
+}
+
 const admin = await session("stmary", "admin@stmary.example");
 const teacher = await session("stmary", "tcruz@stmary.example");
 // Each office has its own account; the admin is deliberately locked out of them.
@@ -25,6 +31,7 @@ const counselor = await session("stmary", "guidance@stmary.example");
 const sao = await session("stmary", "sao@stmary.example");
 const chaplain = await session("stmary", "chaplain@stmary.example");
 const cashier = await session("stmary", "cashier@stmary.example");
+const platform = await adminSession();
 
 const PAGES = [
   ["lvh.me", "/", null],
@@ -51,13 +58,17 @@ const PAGES = [
   ["stmary.lvh.me", "/fees", cashier],
   ["stmary.lvh.me", "/analytics", admin],
   ["admin.lvh.me", "/login", null],
+  // The platform admin's own screens, on its own cookie.
+  ["admin.lvh.me", "/", platform, "sp_admin"],
+  ["admin.lvh.me", "/invoices", platform, "sp_admin"],
+  ["admin.lvh.me", "/messages", platform, "sp_admin"],
 ];
 
 const problems = [];
 for (const w of WIDTHS) {
   const ctx = await b.newContext({ viewport: { width: w, height: 900 } });
-  for (const [host, path, sid] of PAGES) {
-    if (sid) await ctx.addCookies([{ name: "sp_session", value: sid, domain: host, path: "/" }]);
+  for (const [host, path, sid, cookie = "sp_session"] of PAGES) {
+    if (sid) await ctx.addCookies([{ name: cookie, value: sid, domain: host, path: "/" }]);
     const p = await ctx.newPage();
     const res = await p.goto(`http://${host}:3000${path}`, { waitUntil: "networkidle" });
     const m = await p.evaluate(() => ({

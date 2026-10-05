@@ -35,5 +35,7 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/|favicon.ico|manifest.webmanifest|sw.js|icons/).*)"],
+  // /api/cron is excluded: the scheduled runner belongs to the platform, not
+  // to any one subdomain, so it must not be rewritten into a tenant's tree.
+  matcher: ["/((?!_next/|api/cron|favicon.ico|manifest.webmanifest|sw.js|icons/).*)"],
 };

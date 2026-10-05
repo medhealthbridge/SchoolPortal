@@ -7,6 +7,8 @@ import { students, users } from "@/db/schema";
 import { verifyPassword } from "@/lib/password";
 import { audit } from "@/lib/audit";
 import { createSchoolSession, currentSchool } from "@/lib/session";
+import { attempt, clearAttempts, LOGIN, retryMessage } from "@/lib/throttle";
+import { clientIp } from "@/lib/request";
 
 export type SignInResult = { error?: string } & Partial<Navigation>;
 
@@ -20,6 +22,16 @@ export async function signIn(
   const identifier = String(formData.get("identifier") ?? "").trim();
   const password = String(formData.get("password") ?? "");
   if (!identifier || !password) return { error: "Enter your email or student ID and password." };
+
+  // Two budgets: one for the account being guessed at, one for the machine
+  // doing the guessing. Either on its own is easy to walk around — a thousand
+  // accounts tried once each, or one account tried from a thousand addresses.
+  const who = `login:${school.id}:${identifier.toLowerCase()}`;
+  const where = `login-ip:${school.id}:${await clientIp()}`;
+  for (const key of [who, where]) {
+    const { allowed, retryInSeconds } = await attempt(key, LOGIN);
+    if (!allowed) return { error: retryMessage(retryInSeconds) };
+  }
 
   const user = await withTenant(school.id, async (tx) => {
     // Staff and parents sign in with an email; students may use their ID.
@@ -43,6 +55,9 @@ export async function signIn(
   if (!user || user.status !== "active" || !(await verifyPassword(password, user.passwordHash))) {
     return { error: "That sign-in did not match our records." };
   }
+
+  // The password was right, so this is not an attacker: give the budget back.
+  await clearAttempts(who);
 
   await withTenant(school.id, async (tx) => {
     await tx.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, user.id));

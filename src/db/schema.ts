@@ -471,6 +471,19 @@ export const sessions = pgTable(
   (t) => [index("sessions_user_idx").on(t.userId)],
 );
 
+/**
+ * Sign-in and signup attempt counters. In Postgres rather than in memory so a
+ * restart or a second instance cannot reset someone's budget — the whole point
+ * of a throttle is that it survives the thing being throttled.
+ */
+export const authThrottle = pgTable("auth_throttle", {
+  /** What is being limited: "login:<school>:<identifier>", "admin:<email>", … */
+  key: text("key").primaryKey(),
+  count: integer("count").notNull().default(0),
+  /** When the window rolls over and the count starts again. */
+  resetAt: timestamp("reset_at", { withTimezone: true }).notNull(),
+});
+
 export const auditLog = pgTable(
   "audit_log",
   {
@@ -570,6 +583,14 @@ export const outboundMessages = pgTable(
     toAddress: text("to_address").notNull(),
     subject: text("subject"),
     body: text("body").notNull(),
+    /**
+     * "held" — written down, with no provider configured, which is the whole
+     * of dev and test. "sent" — a provider accepted it. "failed" — it did not,
+     * and `error` says what it said. The row is written before the attempt, so
+     * a crash mid-send still leaves a record of what was meant to go out.
+     */
+    status: text("status").notNull().default("held"),
+    error: text("error"),
     sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("outbound_school_idx").on(t.schoolId, t.sentAt)],

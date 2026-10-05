@@ -51,7 +51,7 @@ Postgres 16 and Node 22.
 cp .env.example .env.local        # then edit DATABASE_URL if you are not on localhost
 npm install
 # If Postgres is not running yet: sudo pg_ctlcluster 16 main start
-npm run db:push                   # creates the tables, the app_user role and the RLS policies
+npm run db:migrate                # applies drizzle/*.sql, the app_user role and the RLS policies
 npm run db:seed                   # two demo schools, every module filled, prints the logins
 npm run dev
 ```
@@ -67,7 +67,7 @@ npm run dev
 secret and its current code.
 
 ```bash
-npm test          # 52 tests, including the cross-tenant isolation gate
+npm test          # 75 tests, including the cross-tenant isolation gate
 npm run typecheck
 npm run build
 ```
@@ -183,18 +183,71 @@ a ₱460,000 year, and a 300-student Starter school pays ₱240 per student per
 year for attendance alone. Lowering `perStudentCentavos` per tier is a one-line
 change — the column is already per subscription.
 
-## Not built, deliberately
+## Going live
 
-- A real mail provider and SMS gateway. `src/lib/messaging.ts` is the single
-  seam; everything it is handed lands in `outbound_messages` and shows on the
-  admin Outbox.
-- A payment gateway. Payments are recorded by hand, as the plan asks.
-- Object storage for logos and photos.
-- A scheduled runner. `issueInvoices()`, `markPastDue()` and `processEvents()`
-  are plain functions; the admin screen has a "Run billing" button, and a cron
-  or Vercel scheduled function calls the same three.
-- The data processing agreement, privacy notice and consent wording, which the
-  plan rightly sends to a Philippine privacy lawyer.
+```bash
+npm run db:generate   # after a schema change: writes drizzle/NNNN_*.sql — read it, commit it
+npm run db:migrate    # applies the migrations, the grants and the RLS policies
+npm run build && npm start
+```
+
+Three things have to be right before it serves a real school, and the app
+checks all three on boot — in production it refuses to start rather than run
+unsafely, and `tests/hardening.test.ts` covers each case:
+
+| Must be true | Why |
+| --- | --- |
+| `APP_DATABASE_URL` is set, and is not `DATABASE_URL` | Without it the app connects as the table owner, row-level security is bypassed, and one school can read another's students. Nothing fails visibly. |
+| `PLATFORM_ADMIN_PASSWORD` is changed and 12+ characters | That account reaches every school. |
+| `ROOT_DOMAIN` is set | Otherwise every link a school sends points at `lvh.me:3000`. |
+
+### Mail and SMS
+
+`src/lib/delivery.ts` posts JSON to whatever provider four environment
+variables describe: `EMAIL_API_URL`, `EMAIL_API_KEY`, `EMAIL_FROM` and
+`EMAIL_BODY_TEMPLATE` (and the `SMS_` four). The template names that
+provider's own fields; `{{to}}`, `{{subject}}`, `{{body}}`, `{{from}}` and
+`{{key}}` are filled in and JSON-escaped. Semaphore, Movider, Twilio, Resend
+and Postmark all fit, and switching between them is an env change rather than
+a deploy.
+
+```bash
+SMS_API_URL=https://api.semaphore.co/api/v4/messages
+SMS_BODY_TEMPLATE={"apikey":"{{key}}","number":"{{to}}","message":"{{body}}","sendername":"{{from}}"}
+```
+
+With nothing configured no message is sent and every one stays **held** in the
+outbox, which is what dev and the tests rely on — and it means a
+half-configured production sends nothing rather than something wrong. The
+admin Outbox shows held, sent, and failed with the provider's own reason.
+
+### The scheduled runner
+
+One endpoint runs everything on a timer — invoices, past-due, the event queue
+across every school, and throttle housekeeping:
+
+```bash
+curl -X POST https://yourapp.com/api/cron/run -H "Authorization: Bearer $CRON_SECRET"
+```
+
+`vercel.json` schedules it monthly for billing and nightly for the queue.
+Without `CRON_SECRET` the endpoint 404s every caller, and the secret is
+compared in constant time. Every job inside is safe to repeat, so a double
+fire costs nothing.
+
+### Rate limiting
+
+Every way in is throttled against both the account and the caller's address:
+ten tries per ten minutes on a school login, six on the platform admin, eight
+on signup. The counters are rows in Postgres, not a Map, so they survive a
+restart and hold across instances. A correct password gives the budget back.
+
+## Still not built
+
+- **A payment gateway.** Payments are recorded by hand, as the plan asks.
+- **Object storage** for logos and photos.
+- **The data processing agreement, privacy notice and consent wording**, which
+  the plan rightly sends to a Philippine privacy lawyer.
 
 ## Layout
 
@@ -205,13 +258,15 @@ src/
     admin/       admin.yourapp.com    platform admin: schools, invoices, outbox
     s/           school.yourapp.com   login, signup, on-hold, and (app)/ behind auth
   components/    the shared UI kit
-  db/            schema, RLS, migrate, seed
-  lib/           guard, session, roles, modules, pricing, invoicing, events, offline
+  db/            schema, migrations, rls, seed
+  lib/           guard, session, roles, modules, pricing, invoicing, events, offline,
+                 throttle, config, delivery, scheduled
   modules/
     attendance/  queries and submit — the first module, and the shape of the rest
     grades/      periods, class scores, the report card, a teacher's load
     billing/     balances, ledger, who owes the cashier
     registrar/   the clearance check, which asks each module that is on
     community/   one screen and one action set, shared by SAO and Chaplain
-tests/           isolation, attendance, billing, pricing, units, modules
+drizzle/         the versioned migrations, applied by npm run db:migrate
+tests/           isolation, attendance, billing, pricing, units, modules, hardening
 ```

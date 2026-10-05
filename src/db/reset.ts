@@ -6,4 +6,4 @@ await sql`drop schema public cascade`;
 await sql`create schema public`;
 await sql`grant all on schema public to public`;
 await sql.end();
-console.log("✓ schema dropped — run npm run db:push next");
+console.log("✓ schema dropped — run npm run db:migrate next");

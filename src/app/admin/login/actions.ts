@@ -9,6 +9,8 @@ import { verifyTotp } from "@/lib/totp";
 import { createAdminSession, destroySession, ADMIN_COOKIE } from "@/lib/session";
 import { audit } from "@/lib/audit";
 import { withPlatform } from "@/db";
+import { attempt, clearAttempts, LOGIN, retryMessage } from "@/lib/throttle";
+import { clientIp } from "@/lib/request";
 
 export type AdminSignInResult = { error?: string } & Partial<Navigation>;
 
@@ -19,6 +21,15 @@ export async function adminSignIn(
   const email = String(form.get("email") ?? "").trim().toLowerCase();
   const password = String(form.get("password") ?? "");
   const code = String(form.get("code") ?? "");
+
+  // This account reaches every school, so it gets the tightest budget in the
+  // app — six tries, counted against the address as well as the email.
+  const budget = { max: 6, windowMs: LOGIN.windowMs };
+  const who = `admin:${email}`;
+  for (const key of [who, `admin-ip:${await clientIp()}`]) {
+    const { allowed, retryInSeconds } = await attempt(key, budget);
+    if (!allowed) return { error: retryMessage(retryInSeconds) };
+  }
 
   const [admin] = await db
     .select()
@@ -35,6 +46,7 @@ export async function adminSignIn(
     return { error: "That second-factor code is wrong." };
   }
 
+  await clearAttempts(who);
   await withPlatform((tx) =>
     audit(tx, {
       schoolId: null,

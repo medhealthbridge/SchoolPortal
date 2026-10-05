@@ -61,6 +61,8 @@ export const UNRESTRICTED_TABLES = [
   "platform_admins",
   "sessions",
   "email_verifications",
+  // Counted before anyone is signed in, so there is no school to scope it to.
+  "auth_throttle",
 ] as const;
 
 export function rlsStatements(): string[] {

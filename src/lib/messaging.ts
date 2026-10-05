@@ -1,7 +1,9 @@
+import { eq } from "drizzle-orm";
 import { db, withTenant, type Tx } from "@/db";
 import { outboundMessages } from "@/db/schema";
+import { send, type Channel } from "./delivery";
 
-export type Channel = "email" | "sms" | "inapp";
+export type { Channel };
 
 export type OutboundMessage = {
   schoolId?: string | null;
@@ -12,11 +14,14 @@ export type OutboundMessage = {
 };
 
 /**
- * The single seam for anything leaving the system. Swap the body of this
- * function for a mail provider and a Philippine SMS gateway; everything that
- * calls it — verification codes, invites, absence alerts, invoice reminders —
- * stays as it is. Until then every message lands in the outbox table, which is
- * what the tests and the admin Outbox screen read.
+ * The single seam for anything leaving the system: verification codes,
+ * invites, absence alerts, invoice reminders, grade notices.
+ *
+ * The row is written first and the provider is called second, so a message is
+ * never sent without a record of it, and the admin Outbox shows what went out,
+ * what is held, and what failed and why. `src/lib/delivery.ts` holds the
+ * provider; with none configured every message stays "held", which is what
+ * dev and the tests rely on.
  *
  * Pass `tx` when already inside a tenant transaction; otherwise one is opened
  * so the row satisfies row-level security.
@@ -31,7 +36,7 @@ export async function deliver(message: OutboundMessage, tx?: Tx) {
   };
 
   const insert = async (runner: Tx | typeof db) =>
-    (await runner.insert(outboundMessages).values(row).returning())[0];
+    (await runner.insert(outboundMessages).values(row).returning())[0]!;
 
   const saved = tx
     ? await insert(tx)
@@ -42,5 +47,19 @@ export async function deliver(message: OutboundMessage, tx?: Tx) {
   if (process.env.NODE_ENV !== "production") {
     console.log(`[${message.channel}] → ${message.to}: ${message.body.slice(0, 120)}`);
   }
-  return saved;
+
+  const attempt = await send(message);
+  if (attempt.status === "held") return saved;
+
+  // The update runs outside the caller's transaction on purpose: the message
+  // has already left, so that fact must survive a rollback of whatever
+  // triggered it.
+  const update = { status: attempt.status, error: attempt.error ?? null };
+  const write = (runner: Tx | typeof db) =>
+    runner.update(outboundMessages).set(update).where(eq(outboundMessages.id, saved.id));
+
+  if (saved.schoolId) await withTenant(saved.schoolId, (t) => write(t));
+  else await write(db);
+
+  return { ...saved, ...update };
 }

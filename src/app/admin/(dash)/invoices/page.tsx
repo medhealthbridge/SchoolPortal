@@ -1,5 +1,5 @@
 import { desc, eq } from "drizzle-orm";
-import { db } from "@/db";
+import { withPlatform } from "@/db";
 import { invoices, schools } from "@/db/schema";
 import { requireAdmin } from "@/lib/guard";
 import { peso } from "@/lib/pricing";
@@ -21,12 +21,17 @@ export const metadata = { title: "Invoices" };
 
 export default async function InvoicesPage() {
   await requireAdmin();
-  const rows = await db
-    .select({ invoice: invoices, school: schools })
-    .from(invoices)
-    .innerJoin(schools, eq(schools.id, invoices.schoolId))
-    .orderBy(desc(invoices.issuedAt))
-    .limit(100);
+  // withPlatform, not db: invoices are a tenant table, so a plain read is
+  // filtered by row-level security to the current school — and here there is
+  // none, which silently returns nothing.
+  const rows = await withPlatform((tx) =>
+    tx
+      .select({ invoice: invoices, school: schools })
+      .from(invoices)
+      .innerJoin(schools, eq(schools.id, invoices.schoolId))
+      .orderBy(desc(invoices.issuedAt))
+      .limit(100),
+  );
 
   const open = rows.filter((r) => r.invoice.status === "issued");
   const outstanding = open.reduce((n, r) => n + r.invoice.totalCentavos, 0);
