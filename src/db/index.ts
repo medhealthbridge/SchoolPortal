@@ -13,8 +13,18 @@ function connectionString() {
   // connection and is only used by migrations and tests that need to set up
   // fixtures.
   const url = process.env.APP_DATABASE_URL ?? process.env.DATABASE_URL;
-  if (!url) throw new Error("APP_DATABASE_URL / DATABASE_URL is not set");
-  return url;
+  if (url) return url;
+
+  // `next build` imports every route module to collect page data, and a
+  // builder — Vercel, CI — has no reason to hold production credentials. The
+  // client below does not connect until its first query, so a placeholder is
+  // enough to let the build finish; a page that really did query at build time
+  // would fail loudly with a refused connection rather than quietly. At
+  // runtime the missing URL is still an error, and `assertConfig` says so.
+  if (process.env.NEXT_PHASE === "phase-production-build") {
+    return "postgres://build:build@127.0.0.1:5432/build";
+  }
+  throw new Error("APP_DATABASE_URL / DATABASE_URL is not set");
 }
 
 /**
