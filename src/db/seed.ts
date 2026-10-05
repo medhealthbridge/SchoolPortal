@@ -47,6 +47,28 @@ const LAST_NAMES = [
   "Villanueva", "Wong", "Yap",
 ];
 
+/**
+ * This script deletes every school and the platform admin before it starts.
+ * That is the point of it on a laptop and a catastrophe anywhere else, and a
+ * mistyped DATABASE_URL is all it would take. So it only runs against a
+ * database on this machine, unless told in so many words.
+ */
+const target = (() => {
+  try {
+    return new URL(process.env.DATABASE_URL ?? "postgres://localhost/none").hostname;
+  } catch {
+    return "(unreadable)";
+  }
+})();
+if (!["localhost", "127.0.0.1", "::1", "[::1]"].includes(target) && !process.argv.includes("--force-remote")) {
+  console.error(
+    `\n✗ Refusing to seed ${target}: this deletes every school and the platform admin.\n` +
+      "  It is for a local demo database. To create just the platform admin on a real one,\n" +
+      "  run npm run db:bootstrap. If you truly mean to wipe it, add --force-remote.\n",
+  );
+  process.exit(1);
+}
+
 async function main() {
   console.log("→ clearing");
   await withPlatform(async (tx) => {

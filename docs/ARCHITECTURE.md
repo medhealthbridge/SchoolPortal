@@ -181,6 +181,17 @@ breaks offline attendance: a school's own API lives at `/api/attendance/…`
 and relies on the rewrite into `/s`. Only `api/cron`, `api/payments` and
 `uploads/` skip it.
 
+**React 19 resets a form after every action — including controlled inputs.**
+On the admin login this wiped the password between the first sign-in step and
+the enrolment step. The form is kept as `<form action={serverAction}>` rather
+than a handler on `onSubmit`, because a form that depends on JavaScript having
+loaded falls back to a plain GET, which puts the password in the URL and in
+the server log; the server-action form falls back to a POST. The typed values
+are restored after the reset instead.
+
+**`db:seed` deletes every school.** It refuses any database that is not on
+this machine. To create the platform admin on a real one, use `db:bootstrap`.
+
 **`db:reset` must drop the `drizzle` schema as well as `public`.** Drizzle keeps
 its record of applied migrations in its own schema. Dropping only `public`
 left that record behind, so the next migrate believed the tables still existed
@@ -213,7 +224,7 @@ a screen looks colourful, something is wrong.
 ## Testing
 
 ```bash
-npm test     # 122 tests against a real Postgres, single fork
+npm test     # 130 tests against a real Postgres, single fork
 ```
 
 | File | Holds |
@@ -225,6 +236,7 @@ npm test     # 122 tests against a real Postgres, single fork
 | `payments.test.ts` | Checkout, webhook signatures, idempotent recording |
 | `hardening.test.ts` | Throttling, the boot check, the cron guard, delivery, and the `db`-vs-`withPlatform` scan |
 | `storage.test.ts` | Upload validation by magic bytes, path traversal, SigV4 |
+| `admin-auth.test.ts` | The platform admin's first sign-in: enrolment, a wrong code keeping the same key, a weak key being replaced, and two first sign-ins racing |
 | `profile.test.ts` | The school profile's validation: names, phone shapes, colour as `#RRGGBB` only, and the badge's contrast |
 | `pricing.test.ts`, `units.test.ts` | Pure functions |
 

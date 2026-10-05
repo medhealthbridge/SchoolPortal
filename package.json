@@ -11,10 +11,12 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
     "db:seed": "tsx src/db/seed.ts",
+    "db:bootstrap": "tsx src/db/bootstrap.ts",
     "db:reset": "tsx src/db/reset.ts",
     "test": "vitest run",
     "smoke": "node scripts/smoke.mjs",
-    "responsive": "node scripts/resp-check.mjs"
+    "responsive": "node scripts/resp-check.mjs",
+    "vercel-build": "node scripts/vercel-build.mjs"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.3",

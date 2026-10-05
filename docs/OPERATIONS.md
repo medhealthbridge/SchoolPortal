@@ -12,6 +12,7 @@ For whoever deploys and keeps it running. If you use the system instead, read
 - [Local setup](#local-setup)
 - [Configuration](#configuration)
 - [Deploying](#deploying)
+- [Deploying on Vercel](#deploying-on-vercel)
 - [DNS](#dns)
 - [The database](#the-database)
 - [The scheduled runner](#the-scheduled-runner)
@@ -71,7 +72,8 @@ secret and the code valid at that moment.
 | `npm test` | The full suite against a real Postgres |
 | `npm run db:generate` | Writes `drizzle/NNNN_*.sql` from a schema change |
 | `npm run db:migrate` | Applies migrations, grants and RLS |
-| `npm run db:seed` | Demo data |
+| `npm run db:seed` | Demo data. **Deletes every school and the platform admin first**, so it refuses any database that is not on this machine unless given `--force-remote` |
+| `npm run db:bootstrap` | Creates the platform admin on a database that has none, and does nothing once one exists. Safe on every deploy |
 | `npm run db:reset` | Drops the `public` and `drizzle` schemas — destroys everything, including the record of which migrations ran |
 | `npm run responsive` | 27 screens × 7 widths, fails on horizontal scroll |
 | `npm run smoke` | End-to-end against a running dev server |
@@ -130,6 +132,49 @@ npm start
 ```
 
 Run `db:migrate` **before** the new code starts serving.
+
+---
+
+## Deploying on Vercel
+
+`vercel.json` declares the framework and the cron schedule, and `package.json`
+has a `vercel-build` script that Vercel runs in place of `npm run build`
+(`scripts/vercel-build.mjs`):
+
+| Deploy | What it does |
+| --- | --- |
+| **Production** (`VERCEL_ENV=production`) | `db:migrate`, then `db:bootstrap`, then the build. Every step is safe to repeat. A failure at any step stops the deploy. |
+| **Preview** (a branch) | Builds only. The database is not touched, and the build needs no credentials. |
+
+So **the database variables belong to Production only**. A branch preview then
+has nothing to connect with and cannot run a migration against the real
+database, whatever the branch contains.
+
+Set these as Production environment variables, marking the secrets
+*Sensitive* so they cannot be read back:
+
+| Variable | Value |
+| --- | --- |
+| `DATABASE_URL` | The **owner** connection, to Neon's *direct* host (no `-pooler`). Used by the migration. |
+| `APP_DATABASE_URL` | `app_user`, to the *pooled* host. This is what the running app uses. |
+| `APP_USER_PASSWORD` | The password `db:migrate` gives `app_user`; must match `APP_DATABASE_URL`. Letters and digits only, since it sits inside a URL. |
+| `ROOT_DOMAIN`, `NEXT_PUBLIC_ROOT_DOMAIN` | The domain schools are subdomains of |
+| `PLATFORM_ADMIN_EMAIL`, `PLATFORM_ADMIN_PASSWORD` | Read only by `db:bootstrap`, and only when no admin exists |
+| `CRON_SECRET` | Vercel sends it to the cron endpoint automatically |
+| `ALLOW_LOCAL_UPLOADS` | `yes` — and see below |
+
+**Uploads do not work on Vercel until S3 is configured.** The filesystem there
+is read-only, so a logo upload fails with "The file could not be stored".
+`ALLOW_LOCAL_UPLOADS=yes` only lets the app boot. Set the `S3_*` variables
+(Cloudflare R2 is the cheapest) to fix it.
+
+**Vercel Authentication** protects every deployment on a `*.vercel.app` URL,
+so a visitor needs a Vercel login. On the project's Deployment Protection
+settings, turn it off for production, or reach the site by its own domain.
+
+**Rotating the owner password** (Neon console) means updating `DATABASE_URL`
+in Vercel too, or the next production deploy's migration cannot connect. The
+running app is unaffected: it connects as `app_user`.
 
 ---
 
@@ -344,8 +389,8 @@ Point the provider's webhook at `https://yourapp.com/api/payments/webhook`.
 
 ## The platform admin
 
-`admin.yourapp.com`. Email, password **and a TOTP code** — the second factor is
-required, not optional, because this account reaches every school.
+`admin.yourapp.com`. Email, password **and a code from an authenticator app** —
+the second factor is required, because this account reaches every school.
 
 | Screen | For |
 | --- | --- |
@@ -353,9 +398,28 @@ required, not optional, because this account reaches every school.
 | Invoices | Every invoice, what is outstanding and what was collected. Record a payment by hand; "Run billing" issues the month's invoices on demand. |
 | Outbox | Everything the platform sent, and everything it could not. |
 
-The seed creates this account from `PLATFORM_ADMIN_EMAIL` and
-`PLATFORM_ADMIN_PASSWORD` and prints the TOTP secret once. Store it in a
-password manager at that moment; it is not shown again.
+### First sign-in
+
+`npm run db:bootstrap` creates the account from `PLATFORM_ADMIN_EMAIL` and
+`PLATFORM_ADMIN_PASSWORD` **without an authenticator**. The first sign-in sets
+one up, in the app:
+
+1. Enter the email and password, and leave the code empty.
+2. The page shows a setup key (and a link that opens authenticator apps on a
+   phone). Add it to Google Authenticator, Microsoft Authenticator, 1Password
+   or Authy by choosing "enter a setup key".
+3. Enter the six digits the app shows. Only then is the key saved.
+
+Nothing is ever printed to a build log or a chat, which matters: a second
+factor that has sat next to the password in the same place is not independent
+of it. **Sign in as soon as the deploy is live** — until the first sign-in
+completes, anyone who knows the password could enrol their own authenticator.
+After it completes, the key is fixed and the form will not accept a different
+one.
+
+If the phone is lost, there is no self-service recovery. Clear the key in the
+database (`update platform_admins set totp_secret = null where email = '…'`)
+and the next sign-in enrols a new one.
 
 ---
 
@@ -392,7 +456,7 @@ Test a restore before you need one.
 
 ```bash
 npm run typecheck
-npm test                 # 122 tests, including the cross-tenant isolation gate
+npm test                 # 130 tests, including the cross-tenant isolation gate
 npm run build
 npm run responsive       # needs the dev server and a seeded database
 npm run smoke            # same
