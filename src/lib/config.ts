@@ -13,6 +13,7 @@ const DEFAULTS = [
   "change-me-in-production-at-least-32-chars",
   "admin12345",
   "schoolportal",
+  "app_user",
 ];
 
 export function configProblems(env: NodeJS.ProcessEnv = process.env): ConfigProblem[] {
@@ -37,6 +38,24 @@ export function configProblems(env: NodeJS.ProcessEnv = process.env): ConfigProb
 
   if (!has("DATABASE_URL")) {
     problems.push({ key: "DATABASE_URL", says: "not set; migrations have nothing to connect to." });
+  }
+
+  // The app role's own password. On localhost the default is harmless; on a
+  // managed Postgres the endpoint is reachable from the internet, and a role
+  // called app_user whose password is "app_user" is an open door.
+  const appPassword = env.APP_USER_PASSWORD ?? "";
+  if (!appPassword || DEFAULTS.includes(appPassword)) {
+    problems.push({
+      key: "APP_USER_PASSWORD",
+      says:
+        "not set, so the app role keeps its default password. Set it, put the " +
+        "same value in APP_DATABASE_URL, and run npm run db:migrate to apply it.",
+    });
+  } else if (appPassword.length < 16) {
+    problems.push({
+      key: "APP_USER_PASSWORD",
+      says: "is shorter than 16 characters for a role that reaches every school's rows.",
+    });
   }
 
   if (!has("ROOT_DOMAIN")) {

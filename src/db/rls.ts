@@ -122,13 +122,34 @@ export function rlsStatements(): string[] {
   return out;
 }
 
+/**
+ * The password for the app's own role.
+ *
+ * Unset, it falls back to a well-known value, which is fine for a Postgres
+ * listening on localhost. Against anything reachable from the internet —
+ * Neon, Supabase, RDS — a role called app_user with the password "app_user"
+ * is an open door, so `assertConfig` refuses to start production without it.
+ */
+export function appUserPassword() {
+  return process.env.APP_USER_PASSWORD ?? "app_user";
+}
+
+/** A password cannot be a bound parameter in DDL, so it is quoted by hand. */
+function sqlLiteral(value: string) {
+  return `'${value.replace(/'/g, "''")}'`;
+}
+
 export function grantStatements(tables: string[]): string[] {
+  const password = sqlLiteral(appUserPassword());
   return [
     `do $$ begin
        if not exists (select 1 from pg_roles where rolname = 'app_user') then
-         create role app_user login password 'app_user' nobypassrls;
+         create role app_user login password ${password} nobypassrls;
        end if;
      end $$`,
+    // Re-applied on every migrate, so changing APP_USER_PASSWORD and running
+    // `npm run db:migrate` is how the password is rotated.
+    `alter role app_user with login password ${password} nobypassrls`,
     `grant usage on schema public to app_user`,
     ...tables.map((t) => `grant select, insert, update, delete on "${t}" to app_user`),
     `alter default privileges in schema public grant select, insert, update, delete on tables to app_user`,

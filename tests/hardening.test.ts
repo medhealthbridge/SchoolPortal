@@ -68,6 +68,7 @@ describe("configuration check", () => {
     APP_DATABASE_URL: "postgres://app_user@h/db",
     ROOT_DOMAIN: "school.example",
     PLATFORM_ADMIN_PASSWORD: "a-long-enough-password",
+    APP_USER_PASSWORD: "a-long-enough-role-password",
     ALLOW_LOCAL_UPLOADS: "yes",
   };
 
@@ -88,6 +89,17 @@ describe("configuration check", () => {
   it("catches the example admin password and a short one", () => {
     expect(configProblems({ ...good, PLATFORM_ADMIN_PASSWORD: "admin12345" })).not.toEqual([]);
     expect(configProblems({ ...good, PLATFORM_ADMIN_PASSWORD: "short" })).not.toEqual([]);
+  });
+
+  it("objects to the app role keeping its default password", () => {
+    const { APP_USER_PASSWORD: _unset, ...without } = good;
+    expect(configProblems(without).map((p) => p.key)).toContain("APP_USER_PASSWORD");
+    expect(
+      configProblems({ ...good, APP_USER_PASSWORD: "app_user" }).map((p) => p.key),
+    ).toContain("APP_USER_PASSWORD");
+    expect(
+      configProblems({ ...good, APP_USER_PASSWORD: "tooshort" }).map((p) => p.key),
+    ).toContain("APP_USER_PASSWORD");
   });
 
   it("objects to local uploads unless someone has said that is intended", () => {

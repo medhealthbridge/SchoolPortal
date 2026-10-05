@@ -6,6 +6,14 @@ Each school gets its own subdomain, a shared core (students, roles, billing)
 and modules it can switch on one at a time. Attendance ships first and works
 with no signal; every other module plugs into the same student record.
 
+## Documentation
+
+| Read | If you |
+| --- | --- |
+| [docs/MANUAL.md](docs/MANUAL.md) | Use the system — school admin, teacher, each office, parents and students |
+| [docs/OPERATIONS.md](docs/OPERATIONS.md) | Deploy it and keep it running |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Change the code |
+
 ## What is built
 
 All eight roadmap phases are implemented and running. Every module is a page a
