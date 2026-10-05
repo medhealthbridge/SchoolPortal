@@ -19,6 +19,12 @@ async function session(host, email) {
 
 const admin = await session("stmary", "admin@stmary.example");
 const teacher = await session("stmary", "tcruz@stmary.example");
+// Each office has its own account; the admin is deliberately locked out of them.
+const officer = await session("stmary", "discipline@stmary.example");
+const counselor = await session("stmary", "guidance@stmary.example");
+const sao = await session("stmary", "sao@stmary.example");
+const chaplain = await session("stmary", "chaplain@stmary.example");
+const cashier = await session("stmary", "cashier@stmary.example");
 
 const PAGES = [
   ["lvh.me", "/", null],
@@ -35,6 +41,15 @@ const PAGES = [
   ["stmary.lvh.me", "/audit", admin],
   ["stmary.lvh.me", "/attendance/report", admin],
   ["stmary.lvh.me", "/attendance", teacher],
+  ["stmary.lvh.me", "/grades", admin],
+  ["stmary.lvh.me", "/announcements", admin],
+  ["stmary.lvh.me", "/discipline", officer],
+  ["stmary.lvh.me", "/guidance", counselor],
+  ["stmary.lvh.me", "/sao", sao],
+  ["stmary.lvh.me", "/chaplain", chaplain],
+  ["stmary.lvh.me", "/registrar", admin],
+  ["stmary.lvh.me", "/fees", cashier],
+  ["stmary.lvh.me", "/analytics", admin],
   ["admin.lvh.me", "/login", null],
 ];
 

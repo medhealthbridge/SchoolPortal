@@ -1,6 +1,7 @@
 import { requireUser } from "@/lib/guard";
 import { enabledModules } from "@/lib/tenant";
-import { permissionsFor, ROLE_LABELS, type Role } from "@/lib/roles";
+import { permissionsFor, ROLE_LABELS, type Role, type Permission } from "@/lib/roles";
+import type { ModuleKey } from "@/lib/modules";
 import { AppShell, type NavItem } from "@/components/shell";
 import { SignOutButton } from "@/components/sign-out";
 import { Callout, LinkButton } from "@/components/ui";
@@ -8,11 +9,14 @@ import {
   CalendarIcon,
   CardIcon,
   ClipboardCheckIcon,
+  ClockIcon,
   GridIcon,
+  InfoIcon,
+  LockIcon,
   PeopleIcon,
   ReportIcon,
-  ClockIcon,
-  LockIcon,
+  BuildingIcon,
+  CheckIcon,
 } from "@/components/icons";
 import { signOutAction } from "../login/actions";
 
@@ -21,49 +25,109 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const on = await enabledModules(school.id);
   const perms = permissionsFor(session.roles);
 
+  /** A screen appears when its module is on AND the role may reach it. */
+  const entry = (
+    item: Omit<NavItem, "primary"> & { primary?: boolean },
+    needs: Permission[],
+    module?: ModuleKey,
+  ): NavItem[] => {
+    if (module && !on.has(module)) return [];
+    return needs.some((p) => perms.has(p)) ? [item as NavItem] : [];
+  };
+
   const nav: NavItem[] = [
     { href: "/", label: "Today", icon: <CalendarIcon />, primary: true, group: "School" },
-  ];
-  if (perms.has("attendance.take") && on.has("attendance"))
-    nav.push({
-      href: "/attendance",
-      label: "Attendance",
-      icon: <ClipboardCheckIcon />,
-      primary: true,
-      group: "School",
-    });
-  if (perms.has("attendance.view_all") && on.has("attendance"))
-    nav.push({
-      href: "/attendance/report",
-      label: "Reports",
-      icon: <ReportIcon />,
-      primary: true,
-      group: "School",
-    });
-  if (perms.has("students.view"))
-    nav.push({
-      href: "/students",
-      label: "Students",
-      icon: <PeopleIcon />,
-      primary: true,
-      group: "School",
-    });
-  if (perms.has("sections.manage"))
-    nav.push({ href: "/setup", label: "Setup", icon: <ClockIcon />, group: "Manage" });
-  if (perms.has("users.manage"))
-    nav.push({ href: "/people", label: "People", icon: <PeopleIcon />, group: "Manage" });
-  if (perms.has("school.manage"))
-    nav.push({ href: "/modules", label: "Modules", icon: <GridIcon />, group: "Manage" });
-  if (perms.has("school.billing.view"))
-    nav.push({ href: "/billing", label: "Billing", icon: <CardIcon />, group: "Manage" });
-  if (perms.has("audit.view"))
-    nav.push({ href: "/audit", label: "Audit log", icon: <LockIcon />, group: "Manage" });
+    ...entry(
+      { href: "/attendance", label: "Attendance", icon: <ClipboardCheckIcon />, primary: true, group: "School" },
+      ["attendance.take"],
+      "attendance",
+    ),
+    ...entry(
+      { href: "/attendance/report", label: "Attendance report", icon: <ReportIcon />, group: "School" },
+      ["attendance.view_all"],
+      "attendance",
+    ),
+    ...entry(
+      { href: "/grades", label: "Grades", icon: <CheckIcon />, primary: true, group: "School" },
+      ["grades.enter", "grades.view_all"],
+      "grades",
+    ),
+    ...entry(
+      { href: "/announcements", label: "Announcements", icon: <InfoIcon />, group: "School" },
+      ["portal.post", "attendance.view_own_children", "attendance.view_own", "students.view"],
+      "portal",
+    ),
+    ...entry(
+      { href: "/me", label: "My records", icon: <PeopleIcon />, primary: true, group: "School" },
+      ["attendance.view_own_children", "attendance.view_own", "grades.view_own"],
+    ),
+    ...entry(
+      { href: "/students", label: "Students", icon: <PeopleIcon />, primary: true, group: "School" },
+      ["students.view"],
+    ),
 
-  // The phone tab bar takes five; whatever is left lives behind "More".
-  const tabbed = nav.filter((n) => n.primary).length;
-  if (tabbed < 5 && nav.length > tabbed) {
-    const firstManage = nav.find((n) => !n.primary);
-    if (firstManage) firstManage.primary = true;
+    ...entry(
+      { href: "/discipline", label: "Discipline", icon: <LockIcon />, group: "Student life" },
+      ["discipline.report", "discipline.manage"],
+      "discipline",
+    ),
+    ...entry(
+      { href: "/guidance", label: "Guidance", icon: <PeopleIcon />, group: "Student life" },
+      ["guidance.manage"],
+      "guidance",
+    ),
+    ...entry(
+      { href: "/sao", label: "Student affairs", icon: <GridIcon />, group: "Student life" },
+      ["sao.manage"],
+      "sao",
+    ),
+    ...entry(
+      { href: "/chaplain", label: "Ministry", icon: <InfoIcon />, group: "Student life" },
+      ["chaplain.manage"],
+      "chaplain",
+    ),
+
+    ...entry(
+      { href: "/registrar", label: "Registrar", icon: <BuildingIcon />, group: "Operations" },
+      ["registrar.manage"],
+      "registrar",
+    ),
+    ...entry(
+      { href: "/fees", label: "School fees", icon: <CardIcon />, group: "Operations" },
+      ["fees.manage"],
+      "billing",
+    ),
+    ...entry(
+      { href: "/analytics", label: "Analytics", icon: <ReportIcon />, group: "Operations" },
+      ["analytics.view"],
+      "analytics",
+    ),
+
+    ...entry({ href: "/setup", label: "Setup", icon: <ClockIcon />, group: "Manage" }, [
+      "sections.manage",
+    ]),
+    ...entry({ href: "/people", label: "People", icon: <PeopleIcon />, group: "Manage" }, [
+      "users.manage",
+    ]),
+    ...entry({ href: "/modules", label: "Modules", icon: <GridIcon />, group: "Manage" }, [
+      "school.manage",
+    ]),
+    ...entry({ href: "/billing", label: "Subscription", icon: <CardIcon />, group: "Manage" }, [
+      "school.billing.view",
+    ]),
+    ...entry({ href: "/audit", label: "Audit log", icon: <LockIcon />, group: "Manage" }, [
+      "audit.view",
+    ]),
+  ];
+
+  // The phone tab bar takes five. Fill any spare slots from the top down.
+  let tabbed = nav.filter((n) => n.primary).length;
+  for (const item of nav) {
+    if (tabbed >= 5) break;
+    if (!item.primary) {
+      item.primary = true;
+      tabbed += 1;
+    }
   }
 
   return (

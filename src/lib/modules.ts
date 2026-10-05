@@ -26,7 +26,8 @@ export type ModuleDefinition = {
   owns: string[];
   emits: string[];
   listensTo: string[];
-  /** Yearly price in centavos, behind the tiers. */
+  /** The tables it writes. Core's tables are readable by every module; these
+   *  are not — another module reaches them only through an event. */
   priceCentavos: number;
 };
 
@@ -64,7 +65,7 @@ export const MODULES: Record<ModuleKey, ModuleDefinition> = {
     key: "grades",
     name: "Grades",
     summary: "Scores by grading period, and the report card they add up to.",
-    owns: ["scores", "grading_periods", "report_cards"],
+    owns: ["grading_periods", "scores"],
     emits: ["grade.period_closed", "student.failing"],
     listensTo: ["student.marked_absent", "sao.service_hours_logged"],
     priceCentavos: 1_500_000,
@@ -73,7 +74,7 @@ export const MODULES: Record<ModuleKey, ModuleDefinition> = {
     key: "portal",
     name: "Parent and student portal",
     summary: "What parents and students see: alerts, announcements, and their own records.",
-    owns: ["announcements", "portal_alerts"],
+    owns: ["announcements"],
     emits: [],
     listensTo: ["student.marked_absent", "grade.period_closed", "billing.balance_changed"],
     priceCentavos: 1_000_000,
@@ -91,7 +92,7 @@ export const MODULES: Record<ModuleKey, ModuleDefinition> = {
     key: "guidance",
     name: "Guidance",
     summary: "Confidential cases, referrals and appointments, visible only to the guidance office.",
-    owns: ["guidance_cases", "referrals", "appointments"],
+    owns: ["guidance_cases", "case_notes", "appointments"],
     emits: [],
     listensTo: ["student.absence_streak", "student.failing", "discipline.repeat_case"],
     priceCentavos: 600_000,
@@ -100,7 +101,7 @@ export const MODULES: Record<ModuleKey, ModuleDefinition> = {
     key: "registrar",
     name: "Registrar",
     summary: "Enrolment, transfers, transcripts and certificates, with clearance before each one.",
-    owns: ["enrollment_requests", "transfers", "transcripts", "certificates"],
+    owns: ["registrar_requests"],
     emits: ["registrar.clearance_requested"],
     listensTo: ["billing.hold_placed"],
     priceCentavos: 1_000_000,
@@ -109,7 +110,7 @@ export const MODULES: Record<ModuleKey, ModuleDefinition> = {
     key: "billing",
     name: "Billing",
     summary: "School fees, payment plans, receipts and the balance owing per student.",
-    owns: ["fees", "payment_plans", "receipts", "balances"],
+    owns: ["fee_items", "student_charges", "student_payments"],
     emits: ["billing.balance_changed", "billing.hold_placed"],
     listensTo: ["student.enrolled"],
     priceCentavos: 1_500_000,
@@ -118,7 +119,7 @@ export const MODULES: Record<ModuleKey, ModuleDefinition> = {
     key: "sao",
     name: "SAO",
     summary: "Clubs, events, elections and student IDs.",
-    owns: ["clubs", "school_events", "elections", "student_ids"],
+    owns: ["clubs", "club_memberships", "activities", "service_hours"],
     emits: ["sao.service_hours_logged"],
     listensTo: [],
     priceCentavos: 500_000,
@@ -127,7 +128,7 @@ export const MODULES: Record<ModuleKey, ModuleDefinition> = {
     key: "chaplain",
     name: "Chaplain",
     summary: "Ministry activities, formation records and service hours.",
-    owns: ["ministry_activities", "formation_records"],
+    owns: ["activities", "service_hours"],
     emits: ["sao.service_hours_logged"],
     listensTo: [],
     priceCentavos: 300_000,
@@ -136,7 +137,7 @@ export const MODULES: Record<ModuleKey, ModuleDefinition> = {
     key: "analytics",
     name: "Analytics",
     summary: "The principal\u2019s dashboards, drawn from whichever modules are on.",
-    owns: ["dashboard_snapshots"],
+    owns: [],
     emits: [],
     listensTo: ["*"],
     priceCentavos: 500_000,

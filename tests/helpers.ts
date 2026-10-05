@@ -155,7 +155,16 @@ export async function makeSchool(opts: { tier?: "starter" | "all_in"; status?: "
       relationship: "parent",
     });
 
-    return { teacher, parent, year, section, slot, students: studentRows };
+    return {
+      teacher,
+      parent,
+      year,
+      section,
+      slot,
+      subject,
+      room: null,
+      students: studentRows,
+    };
   });
 
   return { school, ...ctx };

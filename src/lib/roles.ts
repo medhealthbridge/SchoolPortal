@@ -61,10 +61,20 @@ export type Permission =
   | "attendance.view_own_children"
   | "attendance.view_own"
   | "reports.view"
+  | "grades.enter"
+  | "grades.view_all"
+  | "grades.view_own"
+  | "grades.manage_periods"
+  | "portal.post"
+  | "discipline.report"
   | "discipline.manage"
   | "guidance.manage"
   | "sao.manage"
   | "chaplain.manage"
+  | "registrar.manage"
+  | "fees.manage"
+  | "fees.view_own"
+  | "analytics.view"
   | "accounting.manage"
   | "audit.view";
 
@@ -78,20 +88,60 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "sections.manage",
     "timetable.manage",
     "attendance.view_all",
+    "grades.view_all",
+    "grades.manage_periods",
+    "portal.post",
+    "registrar.manage",
+    "fees.manage",
+    "analytics.view",
     "reports.view",
     "audit.view",
   ],
-  principal: ["students.view", "attendance.view_all", "reports.view", "audit.view"],
-  registrar: ["students.manage", "students.view", "sections.manage", "reports.view"],
-  teacher: ["attendance.take", "students.view", "reports.view"],
-  adviser: ["attendance.take", "attendance.view_all", "students.view", "reports.view"],
-  discipline_officer: ["discipline.manage", "students.view", "attendance.view_all"],
+  principal: [
+    "students.view",
+    "attendance.view_all",
+    "grades.view_all",
+    "analytics.view",
+    "portal.post",
+    "reports.view",
+    "audit.view",
+  ],
+  registrar: [
+    "students.manage",
+    "students.view",
+    "sections.manage",
+    "registrar.manage",
+    "grades.view_all",
+    "reports.view",
+  ],
+  teacher: [
+    "attendance.take",
+    "grades.enter",
+    "discipline.report",
+    "students.view",
+    "reports.view",
+  ],
+  adviser: [
+    "attendance.take",
+    "attendance.view_all",
+    "grades.enter",
+    "grades.view_all",
+    "discipline.report",
+    "students.view",
+    "reports.view",
+  ],
+  discipline_officer: [
+    "discipline.manage",
+    "discipline.report",
+    "students.view",
+    "attendance.view_all",
+  ],
   guidance_counselor: ["guidance.manage", "students.view"],
   sao_staff: ["sao.manage", "students.view"],
   chaplain: ["chaplain.manage", "students.view"],
-  accounting: ["accounting.manage", "students.view", "school.billing.view"],
-  parent: ["attendance.view_own_children"],
-  student: ["attendance.view_own"],
+  accounting: ["accounting.manage", "fees.manage", "students.view", "school.billing.view"],
+  parent: ["attendance.view_own_children", "grades.view_own", "fees.view_own"],
+  student: ["attendance.view_own", "grades.view_own", "fees.view_own"],
 };
 
 export function permissionsFor(roles: Role[]): Set<Permission> {
@@ -110,10 +160,20 @@ export const PERMISSION_MODULE: Partial<Record<Permission, ModuleKey>> = {
   "attendance.view_all": "attendance",
   "attendance.view_own_children": "attendance",
   "attendance.view_own": "attendance",
+  "grades.enter": "grades",
+  "grades.view_all": "grades",
+  "grades.view_own": "grades",
+  "grades.manage_periods": "grades",
+  "portal.post": "portal",
+  "discipline.report": "discipline",
   "discipline.manage": "discipline",
   "guidance.manage": "guidance",
   "sao.manage": "sao",
   "chaplain.manage": "chaplain",
+  "registrar.manage": "registrar",
+  "fees.manage": "billing",
+  "fees.view_own": "billing",
+  "analytics.view": "analytics",
   "accounting.manage": "billing",
 };
 

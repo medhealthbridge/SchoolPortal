@@ -574,3 +574,401 @@ export const outboundMessages = pgTable(
   },
   (t) => [index("outbound_school_idx").on(t.schoolId, t.sentAt)],
 );
+
+/* ================================================================== *
+ * Grades
+ * ================================================================== */
+
+export const gradingPeriods = pgTable(
+  "grading_periods",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    schoolYearId: uuid("school_year_id")
+      .notNull()
+      .references(() => schoolYears.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    /** 1..n, the order they run in. */
+    sequence: smallint("sequence").notNull(),
+    startsOn: date("starts_on").notNull(),
+    endsOn: date("ends_on").notNull(),
+    closedAt: timestamp("closed_at", { withTimezone: true }),
+  },
+  (t) => [unique("grading_periods_uq").on(t.schoolYearId, t.sequence)],
+);
+
+/**
+ * One score per student, per subject, per period. A school enters a final
+ * figure for the period rather than every quiz, which is what the DepEd
+ * report card actually carries.
+ */
+export const scores = pgTable(
+  "scores",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    gradingPeriodId: uuid("grading_period_id")
+      .notNull()
+      .references(() => gradingPeriods.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    subjectId: uuid("subject_id")
+      .notNull()
+      .references(() => subjects.id, { onDelete: "cascade" }),
+    /** 0–100, as Philippine schools report it. */
+    score: integer("score").notNull(),
+    remarks: text("remarks"),
+    enteredByUserId: uuid("entered_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("scores_uq").on(t.gradingPeriodId, t.studentId, t.subjectId),
+    index("scores_student_idx").on(t.schoolId, t.studentId),
+  ],
+);
+
+/* ================================================================== *
+ * Parent and student portal
+ * ================================================================== */
+
+export const announcements = pgTable(
+  "announcements",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    /** Null = the whole school. */
+    sectionId: uuid("section_id").references(() => sections.id, { onDelete: "cascade" }),
+    postedByUserId: uuid("posted_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    postedAt: timestamp("posted_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("announcements_school_idx").on(t.schoolId, t.postedAt)],
+);
+
+/* ================================================================== *
+ * Discipline
+ * ================================================================== */
+
+export const offenseSeverity = pgEnum("offense_severity", ["minor", "major", "grave"]);
+
+export const incidentStatus = pgEnum("incident_status", [
+  "reported",
+  "under_review",
+  "resolved",
+]);
+
+export const sanctionKind = pgEnum("sanction_kind", [
+  "warning",
+  "community_service",
+  "detention",
+  "suspension",
+  "referral",
+]);
+
+export const offenseLevels = pgTable(
+  "offense_levels",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    severity: offenseSeverity("severity").notNull().default("minor"),
+    description: text("description"),
+  },
+  (t) => [unique("offense_levels_uq").on(t.schoolId, t.name)],
+);
+
+export const incidents = pgTable(
+  "incidents",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    offenseLevelId: uuid("offense_level_id").references(() => offenseLevels.id, {
+      onDelete: "set null",
+    }),
+    onDate: date("on_date").notNull(),
+    summary: text("summary").notNull(),
+    status: incidentStatus("status").notNull().default("reported"),
+    /** A teacher sees only the reports they filed. */
+    reportedByUserId: uuid("reported_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("incidents_student_idx").on(t.schoolId, t.studentId)],
+);
+
+export const sanctions = pgTable("sanctions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  schoolId: uuid("school_id")
+    .notNull()
+    .references(() => schools.id, { onDelete: "cascade" }),
+  incidentId: uuid("incident_id")
+    .notNull()
+    .references(() => incidents.id, { onDelete: "cascade" }),
+  kind: sanctionKind("kind").notNull(),
+  startsOn: date("starts_on").notNull(),
+  endsOn: date("ends_on"),
+  note: text("note"),
+  issuedByUserId: uuid("issued_by_user_id").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/* ================================================================== *
+ * Guidance — the confidential office
+ * ================================================================== */
+
+export const caseStatus = pgEnum("case_status", ["open", "monitoring", "closed"]);
+
+export const guidanceCases = pgTable(
+  "guidance_cases",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    status: caseStatus("status").notNull().default("open"),
+    /** Where it came from: a referral, an attendance flag, a walk-in. */
+    source: text("source").notNull().default("walk_in"),
+    openedByUserId: uuid("opened_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    openedAt: timestamp("opened_at", { withTimezone: true }).notNull().defaultNow(),
+    closedAt: timestamp("closed_at", { withTimezone: true }),
+  },
+  (t) => [index("guidance_cases_idx").on(t.schoolId, t.status)],
+);
+
+export const caseNotes = pgTable("case_notes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  schoolId: uuid("school_id")
+    .notNull()
+    .references(() => schools.id, { onDelete: "cascade" }),
+  caseId: uuid("case_id")
+    .notNull()
+    .references(() => guidanceCases.id, { onDelete: "cascade" }),
+  body: text("body").notNull(),
+  authorUserId: uuid("author_user_id").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const appointments = pgTable("appointments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  schoolId: uuid("school_id")
+    .notNull()
+    .references(() => schools.id, { onDelete: "cascade" }),
+  caseId: uuid("case_id")
+    .notNull()
+    .references(() => guidanceCases.id, { onDelete: "cascade" }),
+  onDate: date("on_date").notNull(),
+  atTime: time("at_time").notNull(),
+  note: text("note"),
+  attended: boolean("attended"),
+});
+
+/* ================================================================== *
+ * SAO and Chaplain — clubs, events, service hours
+ * ================================================================== */
+
+export const clubs = pgTable(
+  "clubs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    moderatorUserId: uuid("moderator_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+  },
+  (t) => [unique("clubs_uq").on(t.schoolId, t.name)],
+);
+
+export const clubMemberships = pgTable(
+  "club_memberships",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    clubId: uuid("club_id")
+      .notNull()
+      .references(() => clubs.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    role: text("role").notNull().default("member"),
+  },
+  (t) => [unique("club_memberships_uq").on(t.clubId, t.studentId)],
+);
+
+export const activityKind = pgEnum("activity_kind", ["sao_event", "ministry"]);
+
+/** SAO events and Chaplain's ministry activities are the same shape. */
+export const activities = pgTable(
+  "activities",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    kind: activityKind("kind").notNull(),
+    name: text("name").notNull(),
+    onDate: date("on_date").notNull(),
+    location: text("location"),
+    /** Hours each attending student is credited with. */
+    serviceHours: integer("service_hours").notNull().default(0),
+    organizedByUserId: uuid("organized_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+  },
+  (t) => [index("activities_idx").on(t.schoolId, t.kind, t.onDate)],
+);
+
+export const serviceHours = pgTable(
+  "service_hours",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    activityId: uuid("activity_id")
+      .notNull()
+      .references(() => activities.id, { onDelete: "cascade" }),
+    hours: integer("hours").notNull(),
+    loggedAt: timestamp("logged_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique("service_hours_uq").on(t.activityId, t.studentId)],
+);
+
+/* ================================================================== *
+ * Billing — the school's own fees, not the platform's
+ * ================================================================== */
+
+export const feeItems = pgTable(
+  "fee_items",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    schoolYearId: uuid("school_year_id")
+      .notNull()
+      .references(() => schoolYears.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    amountCentavos: integer("amount_centavos").notNull(),
+    /** Null = every level. */
+    level: text("level"),
+    dueOn: date("due_on"),
+  },
+  (t) => [unique("fee_items_uq").on(t.schoolYearId, t.name, t.level)],
+);
+
+export const studentCharges = pgTable(
+  "student_charges",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    feeItemId: uuid("fee_item_id")
+      .notNull()
+      .references(() => feeItems.id, { onDelete: "cascade" }),
+    amountCentavos: integer("amount_centavos").notNull(),
+    chargedOn: date("charged_on").notNull(),
+  },
+  (t) => [unique("student_charges_uq").on(t.studentId, t.feeItemId)],
+);
+
+export const studentPayments = pgTable("student_payments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  schoolId: uuid("school_id")
+    .notNull()
+    .references(() => schools.id, { onDelete: "cascade" }),
+  studentId: uuid("student_id")
+    .notNull()
+    .references(() => students.id, { onDelete: "cascade" }),
+  amountCentavos: integer("amount_centavos").notNull(),
+  method: text("method").notNull().default("cash"),
+  reference: text("reference"),
+  receiptNo: text("receipt_no").notNull(),
+  receivedByUserId: uuid("received_by_user_id").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  paidOn: date("paid_on").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/* ================================================================== *
+ * Registrar
+ * ================================================================== */
+
+export const requestKind = pgEnum("request_kind", [
+  "enrollment",
+  "transfer_out",
+  "certificate",
+  "transcript",
+]);
+
+export const requestStatus = pgEnum("request_status", [
+  "requested",
+  "on_hold",
+  "cleared",
+  "released",
+  "declined",
+]);
+
+export const registrarRequests = pgTable(
+  "registrar_requests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    kind: requestKind("kind").notNull(),
+    status: requestStatus("status").notNull().default("requested"),
+    purpose: text("purpose"),
+    /** Why clearance failed, when it did. */
+    holdReason: text("hold_reason"),
+    requestedAt: timestamp("requested_at", { withTimezone: true }).notNull().defaultNow(),
+    releasedAt: timestamp("released_at", { withTimezone: true }),
+    handledByUserId: uuid("handled_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+  },
+  (t) => [index("registrar_requests_idx").on(t.schoolId, t.status)],
+);

@@ -26,6 +26,7 @@ import {
   users,
 } from "./schema";
 import { activationCode, hashPassword } from "@/lib/password";
+import { seedModules } from "./seed-modules";
 import { applyTierModules } from "@/lib/tenant";
 import { generateTotpSecret, otpauthUrl, totp } from "@/lib/totp";
 import { PER_STUDENT_CENTAVOS, platformFeeCentavos } from "@/lib/pricing";
@@ -72,6 +73,7 @@ async function main() {
     status: "active",
     students: 48,
     withAttendance: true,
+    withModules: true,
   });
 
   const northgate = await createSchool({
@@ -99,6 +101,9 @@ async function main() {
   St. Mary         http://stmary.${root}/login   (All-in, active)
                    admin@stmary.example / password123
                    teacher: tcruz@stmary.example / password123
+                   one account per office, all password123:
+                     discipline@stmary.example  guidance@stmary.example
+                     sao@stmary.example  chaplain@stmary.example  cashier@stmary.example
                    a student: ${stmary.sampleStudentNumber} / code ${stmary.sampleActivationCode}
                    parent code for that student: ${stmary.sampleParentCode}
 
@@ -116,6 +121,8 @@ type SeedArgs = {
   status: "active" | "suspended";
   students: number;
   withAttendance: boolean;
+  /** Fill the other modules too, so every screen has something on it. */
+  withModules?: boolean;
 };
 
 async function createSchool(args: SeedArgs) {
@@ -202,6 +209,30 @@ async function createSchool(args: SeedArgs) {
       { schoolId: school.id, userId: teacher.id, role: "teacher" },
       { schoolId: school.id, userId: teacher.id, role: "adviser" },
     ]);
+
+    // One account per office, so every module's screens have an owner.
+    const offices: { role: "discipline_officer" | "guidance_counselor" | "sao_staff" | "chaplain" | "accounting"; name: string; handle: string }[] = [
+      { role: "discipline_officer", name: "Ramon Bautista", handle: "discipline" },
+      { role: "guidance_counselor", name: "Grace Lim", handle: "guidance" },
+      { role: "sao_staff", name: "Paolo Reyes", handle: "sao" },
+      { role: "chaplain", name: "Fr. Luis Mendoza", handle: "chaplain" },
+      { role: "accounting", name: "Nora Castillo", handle: "cashier" },
+    ];
+    for (const office of offices) {
+      const [staff] = await tx
+        .insert(users)
+        .values({
+          schoolId: school.id,
+          email: `${office.handle}@${args.subdomain}.example`,
+          name: office.name,
+          passwordHash: password,
+          status: "active",
+        })
+        .returning();
+      await tx
+        .insert(userRoles)
+        .values({ schoolId: school.id, userId: staff.id, role: office.role });
+    }
 
     const [parent] = await tx
       .insert(users)
@@ -325,12 +356,20 @@ async function createSchool(args: SeedArgs) {
       sampleActivationCode: sample.activationCode,
       sampleParentCode: sample.parentCode,
       teacherId: teacher.id,
+      principalId: principal.id,
+      ownerId: owner.id,
+      parentId: parent.id,
+      yearId: year.id,
+      sectionId: section.id,
+      subjectIds: subjectRows.map((s) => s.id),
       slotIds: slotRows.map((s) => s.id),
       studentIds: studentRows.map((s) => s.id),
+      studentNumbers: studentRows.map((s) => s.studentNumber),
     };
     return result;
   }).then(async (ctx) => {
     if (args.withAttendance) await seedAttendance(ctx);
+    if (args.withModules) await seedModules(ctx);
     return ctx;
   });
 }

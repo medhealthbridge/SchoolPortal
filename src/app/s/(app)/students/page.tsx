@@ -119,7 +119,9 @@ export default async function StudentsPage({
             {rows.map((r) => (
               <tr key={r.id}>
                 <th scope="row" className="text-left font-medium">
-                  {r.lastName}, {r.firstName}
+                  <Link href={`/child/${r.id}`} className="underline underline-offset-2">
+                    {r.lastName}, {r.firstName}
+                  </Link>
                 </th>
                 <td className="text-muted">{r.studentNumber}</td>
                 <td>{r.level ? `${r.level} ${r.section}` : "—"}</td>

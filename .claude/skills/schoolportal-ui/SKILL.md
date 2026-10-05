@@ -83,6 +83,9 @@ voice, the user's vocabulary — never the database's.
 ## Before you finish
 
 - `npx tsc --noEmit`
-- `npm run responsive` (dev server and seeded database running)
+- `npm run responsive` (dev server and seeded database running). It signs in
+  as the office that owns each page — a 404 there usually means the sweep's
+  session lacks the permission, not that the page is broken. Add a new page to
+  `PAGES` in `scripts/resp-check.mjs` with a session that may see it.
 - Look at the page you changed at 390px and at 1280px. A screenshot beats a
   guess.

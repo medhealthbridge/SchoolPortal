@@ -8,8 +8,8 @@ with no signal; every other module plugs into the same student record.
 
 ## What is built
 
-The plan's roadmap has eight phases. Phases 0–3 — the sellable product — are
-implemented and running:
+All eight roadmap phases are implemented and running. Every module is a page a
+school can switch on, and they talk to each other only through the event queue:
 
 | Phase | Builds | State |
 | --- | --- | --- |
@@ -17,11 +17,31 @@ implemented and running:
 | 1. Front door | Public site, onboarding wizard, student-ID signup, CSV imports | Done |
 | 2. Attendance | Timetable, seat map, offline sync, late and excused, monthly report | Done |
 | 3. Platform billing | Tiers, monthly student count, invoices, manual payment, past-due | Done |
-| 4–7. Portal, Grades, Student Life, Operations | — | Declared in the module registry, not built |
+| 4. Portal | Announcements, a parent's child page, a student's own page, notifications | Done |
+| 5. Grades | Grading periods, score entry by class, report card, teaching load | Done |
+| 6. Student Life | Discipline, Guidance, SAO, Chaplain — cases, sanctions, clubs, service hours | Done |
+| 7. Operations | Registrar with clearance, school fees and payments, analytics | Done |
 
-Modules 4–7 exist in `src/lib/modules.ts` with their tables, events and prices,
-and the Portal's absence alert is wired through the event queue, so the seams
-they plug into are real rather than planned. Their screens are not written.
+### What the modules do to each other
+
+Nothing is read across module tables; every link below is an event one module
+emits and another listens to (`src/lib/events.ts`).
+
+| When this happens | This follows |
+| --- | --- |
+| A student is marked absent | The guardian gets an SMS and a portal notification |
+| Three absences in a row | Guidance opens a case, titled with the streak, once |
+| A student is marked late | Discipline records it against the school's offence levels |
+| A suspension starts | Attendance is written excused for each school day of it |
+| A second case on one student | Guidance opens a case, idempotent on the title |
+| A grading period closes | Every guardian is notified their child's card is ready |
+| A failing score is entered | Guidance is notified, with the subject |
+| A student is enrolled | The school's standing fees are charged to them |
+| A balance changes | Registrar re-checks its holds; the guardian gets the notice |
+
+A clearance ask (`src/modules/registrar/clearance.ts`) only asks the modules a
+school has switched on, and reports back which ones it checked — so an empty
+answer is never mistaken for a clean one.
 
 ## Running it
 
@@ -32,7 +52,7 @@ cp .env.example .env.local        # then edit DATABASE_URL if you are not on loc
 npm install
 # If Postgres is not running yet: sudo pg_ctlcluster 16 main start
 npm run db:push                   # creates the tables, the app_user role and the RLS policies
-npm run db:seed                   # two demo schools + the platform admin, prints the logins
+npm run db:seed                   # two demo schools, every module filled, prints the logins
 npm run dev
 ```
 
@@ -47,7 +67,7 @@ npm run dev
 secret and its current code.
 
 ```bash
-npm test          # 39 tests, including the cross-tenant isolation gate
+npm test          # 52 tests, including the cross-tenant isolation gate
 npm run typecheck
 npm run build
 ```
@@ -79,8 +99,8 @@ page should be the marks a teacher made.
   a desktop, so neither is the afterthought.
 - Light only. There is no dark mode, by decision.
 
-**Responsive**: `npm run responsive` loads fifteen screens at 320, 360, 390,
-414, 768, 1024 and 1440 px and fails on any horizontal page scroll. The seat
+**Responsive**: `npm run responsive` loads twenty-four screens at 320, 360,
+390, 414, 768, 1024 and 1440 px, each signed in as the office that owns it, and fails on any horizontal page scroll. The seat
 grid is the one thing that scrolls sideways on a phone — it keeps the room's
 shape instead of squeezing the names out, and a list view is one tap away.
 
@@ -155,6 +175,8 @@ assumptions in the code, each in one place and easy to change:
 | Postgres | Plain Postgres via Drizzle; Neon or Supabase both fit with no code change | `src/db/index.ts` |
 | Brand colours | Fixed defaults per school, stored on the row and overridable | `schools.primary_color` |
 | Trial | 30 days, no card | `src/app/site/register/actions.ts` |
+| Passing mark | 75 of 100, as Philippine schools report it | `src/modules/grades/queries.ts` |
+| School fees | Charged on enrolment, paid at the cashier by hand | `src/modules/billing/queries.ts` |
 
 The plan's own note holds: at 1,500 students the per-student fee is ₱360,000 of
 a ₱460,000 year, and a 300-student Starter school pays ₱240 per student per
@@ -186,6 +208,10 @@ src/
   db/            schema, RLS, migrate, seed
   lib/           guard, session, roles, modules, pricing, invoicing, events, offline
   modules/
-    attendance/  queries and submit — the first module, and the shape of the next
-tests/           isolation, attendance, billing, pricing, units
+    attendance/  queries and submit — the first module, and the shape of the rest
+    grades/      periods, class scores, the report card, a teacher's load
+    billing/     balances, ledger, who owes the cashier
+    registrar/   the clearance check, which asks each module that is on
+    community/   one screen and one action set, shared by SAO and Chaplain
+tests/           isolation, attendance, billing, pricing, units, modules
 ```

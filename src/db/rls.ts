@@ -27,6 +27,30 @@ export const TENANT_TABLES = [
   "payments",
   "events",
   "notifications",
+  // Grades
+  "grading_periods",
+  "scores",
+  // Portal
+  "announcements",
+  // Discipline
+  "offense_levels",
+  "incidents",
+  "sanctions",
+  // Guidance
+  "guidance_cases",
+  "case_notes",
+  "appointments",
+  // SAO and Chaplain
+  "clubs",
+  "club_memberships",
+  "activities",
+  "service_hours",
+  // The school's own fees
+  "fee_items",
+  "student_charges",
+  "student_payments",
+  // Registrar
+  "registrar_requests",
 ] as const;
 
 /** school_id is nullable here, so the policy has to allow the null rows too. */
