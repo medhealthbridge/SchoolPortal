@@ -60,6 +60,11 @@ export default async function LoginPage({
         </Link>
         . Staff are invited by the school admin.
       </p>
+      <p className="mt-3 text-sm text-muted">
+        <Link href="/privacy" className="underline underline-offset-2">
+          How the school keeps your personal information
+        </Link>
+      </p>
     </div>
   );
 }

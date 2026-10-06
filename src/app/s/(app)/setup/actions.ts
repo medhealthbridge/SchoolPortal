@@ -25,6 +25,7 @@ import type { Role } from "@/lib/roles";
 import { withPlatform } from "@/db";
 import { checkImage, keyFromUrl, put, remove } from "@/lib/storage";
 import { parseProfile } from "@/lib/profile";
+import { standardNotice } from "@/lib/privacy";
 
 type ActionResult = { ok?: string; error?: string; issues?: string[] } | null;
 
@@ -361,4 +362,47 @@ export async function saveProfile(_prev: ActionResult, form: FormData): Promise<
 
   revalidatePath("/setup");
   return { ok: "Profile saved. The name and colour show on every screen." };
+}
+
+/** The school's privacy notice and its Data Protection Officer. */
+export async function savePrivacy(_prev: ActionResult, form: FormData): Promise<ActionResult> {
+  const { school, session } = await requirePermission("school.manage");
+  const officer = String(form.get("privacyOfficer") ?? "").trim().slice(0, 200) || null;
+  const text = String(form.get("privacyNotice") ?? "").replace(/\r\n/g, "\n").trim();
+  if (text.length < 200) return { error: "The notice is too short to tell people what the school keeps and why." };
+  if (text.length > 8000) return { error: "Keep the notice under 8,000 characters." };
+  // The standard wording is kept as "none", so it follows a change of school name.
+  const notice = text === standardNotice(school).trim() ? null : text;
+  const askAgain = form.get("askAgain") === "1";
+  const version = askAgain ? school.privacyNoticeVersion + 1 : school.privacyNoticeVersion;
+
+  await withPlatform(async (tx) => {
+    await tx
+      .update(schools)
+      .set({ privacyNotice: notice, privacyOfficer: officer, privacyNoticeVersion: version })
+      .where(eq(schools.id, school.id));
+    await audit(tx, {
+      schoolId: school.id,
+      actorUserId: session.userId,
+      actorLabel: session.name,
+      action: "school.privacy_notice_changed",
+      entity: "schools",
+      entityId: school.id,
+      after: { version, custom: notice !== null, officer },
+    });
+  });
+  // Whoever publishes the new version has read it: they are not stopped by it.
+  if (askAgain)
+    await withTenant(school.id, (tx) =>
+      tx
+        .update(users)
+        .set({ privacyConsentAt: new Date(), privacyConsentVersion: version })
+        .where(eq(users.id, session.userId)),
+    );
+  revalidatePath("/setup");
+  return {
+    ok: askAgain
+      ? `Saved. Everyone will be asked to accept version ${version} on their next visit.`
+      : "Saved. People who already accepted are not asked again.",
+  };
 }

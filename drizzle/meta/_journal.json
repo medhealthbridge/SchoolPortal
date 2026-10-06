@@ -71,6 +71,20 @@
       "when": 1791274164826,
       "tag": "0009_class_record",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791277159993,
+      "tag": "0010_privacy_consent",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791284165894,
+      "tag": "0011_online_enrolment",
+      "breakpoints": true
     }
   ]
 }

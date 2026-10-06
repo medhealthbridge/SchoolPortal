@@ -64,6 +64,18 @@ A code works once. Once a student has claimed their record, nobody else can
 claim it. **The codes are printed and handed out on paper, never emailed**, and
 they are not the student's birthdate — classmates know that.
 
+### The privacy notice
+
+On your first visit the portal shows the school's **privacy notice**, as the
+Data Privacy Act of 2012 (RA 10173) asks. Read it, tick the box and choose
+**I agree, continue**; nothing else opens until you do. Anyone can read it any
+time from the link on the sign-in page.
+
+The school admin edits it in Setup → **Privacy notice**: the wording (the
+standard text names your school and covers what a school keeps and why) and
+who to contact, your Data Protection Officer. Tick **ask everyone to accept it
+again** when a change matters, and everyone sees it on their next visit.
+
 ### If you forget your password
 
 Press **Forgot your password?** under the password box, and enter your email or
@@ -499,6 +511,27 @@ them activities.
 Hours credited here are printed on the report card when Grades is on.
 
 ---
+
+## Registrar: online enrolment
+
+Families can apply from the school's own address, without an account.
+
+1. Open **Enrolment** and choose **Open the form**. Share the address it shows
+   (`yourschool.…/enrol`) on the school's page or group chat.
+2. A parent fills in the learner's details (the same ones as the student
+   record, LRN included), their own name and mobile number, and agrees to the
+   privacy notice. They get a **reference** like `GN77-NMF7`, by text and on
+   screen, and can check on it any time at `/enrol/status` with that reference
+   and their mobile number.
+3. Each application waits in **Enrolment**. **Approve and enrol** takes a
+   student number (the next free one is suggested) and a section (those at
+   the grade applied for are offered first). The learner is created, placed
+   in the section, and the family is texted the student ID and **parent code**
+   to sign up as a parent.
+4. **Decline** asks why, in a sentence: the family is texted that reason.
+
+Close the form when enrolment ends. Approved and declined applications stay
+listed for reference.
 
 ## Registrar
 

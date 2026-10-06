@@ -14,15 +14,17 @@ import { requirePermission } from "@/lib/guard";
 import { can } from "@/lib/roles";
 import Link from "next/link";
 import { ActionForm } from "@/components/action-form";
-import { Field, Input, PageHeader, Pill, Section, LinkButton } from "@/components/ui";
+import { Field, Input, PageHeader, Pill, Section, LinkButton, Textarea } from "@/components/ui";
 import {
   addRoom,
   addSection,
   addSubject,
   createSchoolYear,
   saveLogo,
+  savePrivacy,
   saveProfile,
 } from "./actions";
+import { noticeOf } from "@/lib/privacy";
 import { BrandColorField } from "./brand-color";
 
 export const metadata = { title: "Setup" };
@@ -207,6 +209,29 @@ export default async function SetupPage() {
                   />
                 </Field>
               </div>
+            </ActionForm>
+          </Section>
+
+          <Section
+            id="privacy"
+            title="Privacy notice"
+            subtitle={`Everyone accepts it on their first visit, as the Data Privacy Act asks. Version ${school.privacyNoticeVersion}.`}
+            actions={<Link href="/privacy">Read it as others see it</Link>}
+          >
+            <ActionForm action={savePrivacy} submitLabel="Save privacy notice" className="grid gap-4">
+              <Field
+                label="Data Protection Officer"
+                hint="Who people contact about their personal information: a name, email or phone."
+              >
+                <Input name="privacyOfficer" defaultValue={school.privacyOfficer ?? ""} maxLength={200} />
+              </Field>
+              <Field label="Notice" hint="Leave as it is to use the standard wording, which names your school.">
+                <Textarea name="privacyNotice" rows={10} defaultValue={noticeOf(school)} maxLength={8000} />
+              </Field>
+              <label className="flex min-h-11 items-center gap-3 text-sm">
+                <input type="checkbox" name="askAgain" value="1" className="h-5 w-5" />
+                The notice changed in a way that matters: ask everyone to accept it again.
+              </label>
             </ActionForm>
           </Section>
 

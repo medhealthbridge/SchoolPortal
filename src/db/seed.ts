@@ -139,6 +139,9 @@ async function main() {
                    admin@northgate.databridgesol.space / password123
                    ${northgate.sampleStudentNumber} is in Northgate only — St. Mary cannot see it.
 `);
+  // The demo accounts have already accepted the privacy notice, so a
+  // walkthrough starts on the work. Real accounts are asked on their first visit.
+  await withPlatform((tx) => tx.update(users).set({ privacyConsentAt: new Date(), privacyConsentVersion: 1 }));
   process.exit(0);
 }
 

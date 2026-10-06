@@ -67,6 +67,8 @@ export type SchoolSession = {
   name: string;
   email: string | null;
   roles: Role[];
+  /** The version of the school's privacy notice this person last accepted. */
+  privacyConsentVersion: number | null;
 };
 
 /**
@@ -106,6 +108,7 @@ export async function getSchoolSession(): Promise<SchoolSession | null> {
       name: user.name,
       email: user.email,
       roles: roleRows.map((r) => r.role as Role),
+      privacyConsentVersion: user.privacyConsentVersion,
     } satisfies SchoolSession;
   });
 }

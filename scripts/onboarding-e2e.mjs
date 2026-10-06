@@ -9,6 +9,14 @@
 import { chromium } from "playwright";
 import { execSync } from "node:child_process";
 
+/** A new account meets the school's privacy notice first, as a real person would. */
+async function agree(p) {
+  if (!p.url().includes("/privacy")) return;
+  await p.getByRole("checkbox").check();
+  await p.getByRole("button", { name: "I agree, continue" }).click();
+  await p.waitForURL((u) => !u.pathname.startsWith("/privacy"), { timeout: 30_000 });
+  await p.waitForLoadState("networkidle");
+}
 const CH = process.env.CHROME_PATH;
 const b = await chromium.launch(CH ? { executablePath: CH } : {});
 const root = "lvh.me:3000";
@@ -71,7 +79,13 @@ await login.fill('input[name="identifier"]', email);
 await login.fill('input[name="password"]', "a-long-password-1");
 await login.getByRole("button", { name: /sign in/i }).click();
 await login.waitForURL((u) => !u.pathname.startsWith("/login"), { timeout: 30_000 });
+await login.waitForLoadState("networkidle");
+await agree(login);
 await login.goto(`http://${slug}.${root}/people`, { waitUntil: "networkidle", timeout: 60_000 });
+if (login.url().includes("/privacy")) {
+  await agree(login);
+  await login.goto(`http://${slug}.${root}/people`, { waitUntil: "networkidle", timeout: 60_000 });
+}
 const field = login.locator('input[name="email"]');
 check((await field.inputValue()) === `teacher@${slug}.lvh.me`, `the invite suggests the school's address (${await field.inputValue()})`);
 await login.selectOption('select[name="role"]', "registrar");

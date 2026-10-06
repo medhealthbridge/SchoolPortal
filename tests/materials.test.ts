@@ -109,7 +109,7 @@ describe("who shares and who opens materials", () => {
   it("lets a parent open their child's section and no other", async () => {
     const sections_ = await withTenant(s.school.id, (tx) =>
       readableSections(tx, s.school.id, {
-        sessionId: "x", userId: s.parent.id, schoolId: s.school.id, name: "P", email: null, roles: ["parent"],
+        sessionId: "x", userId: s.parent.id, schoolId: s.school.id, name: "P", email: null, roles: ["parent"], privacyConsentVersion: 1,
       }),
     );
     expect(sections_).toEqual([s.section.id]);

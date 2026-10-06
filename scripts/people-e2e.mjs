@@ -34,7 +34,23 @@ async function as(email, width = 1280) {
   if (email) await ctx.addCookies([{ name: "sp_session", value: mint(email), domain: host, path: "/" }]);
   return ctx.newPage();
 }
-const go = (p, path) => p.goto(`${base}${path}`, { waitUntil: "networkidle", timeout: 90_000 });
+const go = async (p, path) => {
+  const res = await p.goto(`${base}${path}`, { waitUntil: "networkidle", timeout: 90_000 });
+  if (p.url().includes("/privacy")) {
+    await agree(p);
+    return p.goto(`${base}${path}`, { waitUntil: "networkidle", timeout: 90_000 });
+  }
+  return res;
+};
+/** A new account meets the school's privacy notice first, as a real person would. */
+async function agree(p) {
+  if (!p.url().includes("/privacy")) return;
+  await p.getByRole("checkbox").check();
+  await p.getByRole("button", { name: "I agree, continue" }).click();
+  await p.waitForURL((u) => !u.pathname.startsWith("/privacy"), { timeout: 30_000 });
+  await p.waitForLoadState("networkidle");
+}
+
 
 // A second section, so "other classes" exist.
 const rizalId = sh(`npx tsx scripts/e2e-helper.ts section "Grade 8" Rizal`);
@@ -163,8 +179,10 @@ await par.goto(joinLink, { waitUntil: "networkidle", timeout: 60_000 });
 check((await text(par)).includes("Follow Miguel"), "the parent's page names the child");
 await par.locator('input[name="password"]').fill("ana-password-1");
 await par.getByRole("button", { name: "Create my account" }).click();
-await par.waitForURL(`${base}/`, { timeout: 30_000 }).catch(() => {});
-await par.waitForLoadState("networkidle");
+// A new parent goes home, and from there to the privacy notice.
+await par.waitForURL((u) => u.pathname === "/privacy", { timeout: 30_000 }).catch(() => {});
+check(par.url().includes("/privacy"), "a new parent is asked to accept the privacy notice first");
+await agree(par);
 const home = await text(par);
 check(home.includes(`Miguel Santos${stamp}`) && home.includes("Grade 8 Rizal"), "the parent lands on Today with Miguel's card");
 check(home.includes(`Liza Ramos ${stamp}`), "…which names the adviser");

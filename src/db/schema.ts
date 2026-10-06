@@ -112,6 +112,14 @@ export const schools = pgTable(
      * school's records live here, in the shared database.
      */
     databaseName: text("database_name").unique(),
+    /** The school's privacy notice (RA 10173). Null: the standard wording. */
+    privacyNotice: text("privacy_notice"),
+    /** Who to contact about personal data: the Data Protection Officer. */
+    privacyOfficer: text("privacy_officer"),
+    /** Raised when the notice changes, so everyone is asked again. */
+    privacyNoticeVersion: smallint("privacy_notice_version").notNull().default(1),
+    /** Whether the public enrolment form on the school's site takes applications. */
+    enrolmentOpen: boolean("enrolment_open").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("schools_status_idx").on(t.status)],
@@ -158,6 +166,9 @@ export const users = pgTable(
     status: userStatus("status").notNull().default("active"),
     mfaSecret: text("mfa_secret"),
     lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
+    /** Data Privacy Act consent: when, and to which version of the school's notice. */
+    privacyConsentAt: timestamp("privacy_consent_at", { withTimezone: true }),
+    privacyConsentVersion: smallint("privacy_consent_version"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
@@ -1215,4 +1226,43 @@ export const learningMaterials = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("learning_materials_section_idx").on(t.schoolId, t.sectionId)],
+);
+
+/* ================================================================== *
+ * Online enrolment
+ * ================================================================== */
+
+/**
+ * An application from the school's public enrolment form, waiting for the
+ * registrar. Approving it creates the learner and places them in a section.
+ */
+export const enrolmentApplications = pgTable(
+  "enrolment_applications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    /** Given to the family to check on it: short, unambiguous. */
+    reference: text("reference").notNull(),
+    status: text("status").notNull().default("pending"),
+    gradeLevel: text("grade_level").notNull(),
+    /** The learner's details as the family typed them, in the student-record field names. */
+    learner: jsonb("learner").notNull(),
+    previousSchool: text("previous_school"),
+    guardianName: text("guardian_name").notNull(),
+    guardianRelationship: text("guardian_relationship"),
+    guardianPhone: text("guardian_phone").notNull(),
+    guardianEmail: text("guardian_email"),
+    privacyConsentAt: timestamp("privacy_consent_at", { withTimezone: true }).notNull(),
+    decisionNote: text("decision_note"),
+    decidedByUserId: uuid("decided_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    studentId: uuid("student_id").references(() => students.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("enrolment_applications_ref_uq").on(t.schoolId, t.reference),
+    index("enrolment_applications_status_idx").on(t.schoolId, t.status),
+  ],
 );

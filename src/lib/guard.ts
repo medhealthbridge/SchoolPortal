@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { enabledModules } from "./tenant";
 import { getAdminSession, getSchoolSession, currentSchool } from "./session";
 import { PERMISSION_MODULE, can, type Permission } from "./roles";
+import { needsConsent } from "./privacy";
 import type { ModuleKey } from "./modules";
 
 export class AccessError extends Error {
@@ -30,6 +31,8 @@ export async function requireUser() {
   const session = await getSchoolSession();
   if (!session) redirect("/login");
   if (session.schoolId !== school.id) redirect("/login");
+  // Nothing opens until the school's privacy notice is accepted (RA 10173).
+  if (needsConsent(school, session)) redirect("/privacy?consent=1");
   return { school, session };
 }
 
@@ -66,6 +69,7 @@ export async function apiRequirePermission(permission: Permission) {
   const session = await getSchoolSession();
   if (!session || session.schoolId !== school.id)
     throw new AccessError(401, "Sign in first");
+  if (needsConsent(school, session)) throw new AccessError(403, "Accept the school's privacy notice first");
 
   const moduleKey = PERMISSION_MODULE[permission];
   if (moduleKey) {

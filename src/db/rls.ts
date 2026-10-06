@@ -58,6 +58,7 @@ export const TENANT_TABLES = [
   "stored_files",
   "password_resets",
   "learning_materials",
+  "enrolment_applications",
 ] as const;
 
 /** school_id is nullable here, so the policy has to allow the null rows too. */

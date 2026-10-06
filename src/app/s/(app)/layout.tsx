@@ -91,6 +91,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       ["students.view"],
     ),
     ...entry(
+      { href: "/enrolments", label: "Enrolment", icon: <ClipboardCheckIcon />, group: "School" },
+      ["students.manage"],
+    ),
+    ...entry(
       { href: "/teachers", label: "Teachers", icon: <PeopleIcon />, group: "School" },
       ["staff.manage"],
     ),
