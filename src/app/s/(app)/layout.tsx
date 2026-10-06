@@ -58,12 +58,31 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       "portal",
     ),
     ...entry(
-      { href: "/me", label: "My records", short: "Records", icon: <PeopleIcon />, primary: true, group: "School" },
+      perms.has("attendance.view_own_children")
+        ? { href: "/me", label: "My children", short: "Children", icon: <PeopleIcon />, primary: true, group: "School" }
+        : { href: "/me", label: "My records", short: "Records", icon: <PeopleIcon />, primary: true, group: "School" },
       ["attendance.view_own_children", "attendance.view_own", "grades.view_own"],
+    ),
+    ...entry(
+      { href: "/schedule", label: "Schedule", icon: <ClockIcon />, group: "School" },
+      [
+        "timetable.manage",
+        "attendance.take",
+        "attendance.view_own",
+        "attendance.view_own_children",
+      ],
+    ),
+    ...entry(
+      { href: "/classes", label: "My classes", short: "Classes", icon: <PeopleIcon />, group: "School" },
+      ["attendance.take"],
     ),
     ...entry(
       { href: "/students", label: "Students", icon: <PeopleIcon />, primary: true, group: "School" },
       ["students.view"],
+    ),
+    ...entry(
+      { href: "/teachers", label: "Teachers", icon: <PeopleIcon />, group: "School" },
+      ["staff.manage"],
     ),
 
     ...entry(

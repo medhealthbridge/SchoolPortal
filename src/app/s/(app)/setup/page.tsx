@@ -1,4 +1,4 @@
-import { and, asc, count, eq } from "drizzle-orm";
+import { and, asc, count, eq, inArray, isNull } from "drizzle-orm";
 import { withTenant } from "@/db";
 import {
   rooms,
@@ -14,22 +14,11 @@ import { requirePermission } from "@/lib/guard";
 import { can } from "@/lib/roles";
 import Link from "next/link";
 import { ActionForm } from "@/components/action-form";
-import {
-  Field,
-  Input,
-  LinkButton,
-  PageHeader,
-  Pill,
-  Section,
-  Select,
-  Table,
-} from "@/components/ui";
-import { WEEKDAYS, prettyTime } from "@/lib/format";
+import { Field, Input, PageHeader, Pill, Section } from "@/components/ui";
 import {
   addRoom,
   addSection,
   addSubject,
-  addTimetableSlot,
   createSchoolYear,
   saveLogo,
   saveProfile,
@@ -68,7 +57,7 @@ export default async function SetupPage() {
         .selectDistinct({ id: users.id, name: users.name })
         .from(users)
         .innerJoin(userRoles, eq(userRoles.userId, users.id))
-        .where(eq(users.schoolId, school.id))
+        .where(and(eq(users.schoolId, school.id), inArray(userRoles.role, ["teacher", "adviser"])))
         .orderBy(asc(users.name)),
       slots: await tx
         .select({
@@ -87,7 +76,7 @@ export default async function SetupPage() {
         .innerJoin(sections, eq(sections.id, timetableSlots.sectionId))
         .innerJoin(users, eq(users.id, timetableSlots.teacherUserId))
         .leftJoin(rooms, eq(rooms.id, timetableSlots.roomId))
-        .where(eq(timetableSlots.schoolId, school.id))
+        .where(and(eq(timetableSlots.schoolId, school.id), isNull(timetableSlots.retiredAt)))
         .orderBy(asc(timetableSlots.weekday), asc(timetableSlots.startsAt)),
       studentCount: (
         await tx
@@ -112,12 +101,12 @@ export default async function SetupPage() {
       done: Number(data.studentCount ?? 0) > 0,
       href: "/students",
     },
-    { label: "Build the timetable", done: data.slots.length > 0, href: "#timetable" },
     {
-      label: "Invite your staff",
-      done: data.teachers.length > 1,
-      href: "/people",
+      label: "Add your teachers",
+      done: data.teachers.length > 0,
+      href: "/teachers",
     },
+    { label: "Build the class schedule", done: data.slots.length > 0, href: "/schedule" },
   ];
   const left = checklist.filter((c) => !c.done);
 
@@ -365,86 +354,18 @@ export default async function SetupPage() {
         </Section>
       </div>
 
-      <Section id="timetable" title="Timetable" subtitle="This is what lets attendance open the right class.">
-        <ActionForm action={addTimetableSlot} submitLabel="Add class" className="grid gap-3 sm:grid-cols-3">
-          <Field label="Teacher">
-            <Select name="teacherUserId" required>
-              <option value="">Choose…</option>
-              {data.teachers.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Subject">
-            <Select name="subjectId" required>
-              <option value="">Choose…</option>
-              {data.subjects.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.code} — {s.name}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Section">
-            <Select name="sectionId" required>
-              <option value="">Choose…</option>
-              {data.sections.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.level} {s.name}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Room">
-            <Select name="roomId">
-              <option value="">No room</option>
-              {data.rooms.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Day">
-            <Select name="weekday" defaultValue="1">
-              {WEEKDAYS.slice(1).map((d, i) => (
-                <option key={d} value={i + 1}>
-                  {d}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="Starts">
-              <Input type="time" name="startsAt" required />
-            </Field>
-            <Field label="Ends">
-              <Input type="time" name="endsAt" required />
-            </Field>
-          </div>
-        </ActionForm>
-
-        {data.slots.length > 0 && (
-          <div className="mt-5">
-            <Table head={["Day", "Time", "Class", "Teacher", "Room"]}>
-              {data.slots.map((s) => (
-                <tr key={s.id}>
-                  <td>{WEEKDAYS[s.weekday]}</td>
-                  <td className="tabular-nums">
-                    {prettyTime(s.startsAt)}–{prettyTime(s.endsAt)}
-                  </td>
-                  <td>
-                    {s.subject}, {s.level} {s.section}
-                  </td>
-                  <td>{s.teacher}</td>
-                  <td>{s.room ?? "—"}</td>
-                </tr>
-              ))}
-            </Table>
-          </div>
-        )}
+      <Section
+        id="timetable"
+        title="Class schedule"
+        subtitle="Which teacher teaches which subject to which section, in which room and when. It is what lets attendance open the right class."
+      >
+        <p className="text-sm">
+          {data.slots.length} {data.slots.length === 1 ? "class" : "classes"} a week on the schedule.{" "}
+          <Link href="/schedule" className="font-medium underline underline-offset-2">
+            Open Schedule
+          </Link>{" "}
+          to add classes, change them and name each section's adviser.
+        </p>
       </Section>
     </>
   );

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { and, count, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq, isNull } from "drizzle-orm";
 import { withTenant } from "@/db";
 import {
   attendanceRecords,
@@ -17,6 +17,7 @@ import {
   unsubmittedSlots,
 } from "@/modules/attendance/queries";
 import { prettyDate, prettyTime, todayIso } from "@/lib/format";
+import { scheduleFor, sectionOfStudent } from "@/lib/schedule";
 import {
   Avatar,
   EmptyState,
@@ -80,7 +81,7 @@ export default async function Dashboard() {
         await tx
           .select({ n: count() })
           .from(timetableSlots)
-          .where(eq(timetableSlots.schoolId, school.id))
+          .where(and(eq(timetableSlots.schoolId, school.id), isNull(timetableSlots.retiredAt)))
       )[0]?.n ?? 0,
     ),
     enrolled: Number(
@@ -97,19 +98,32 @@ export default async function Dashboard() {
   }));
 
   const watched = [...data.children.map((c) => c.student), ...data.mine];
-  const recent = watched.length
+  // Every child gets their own card: a parent of two should not have to guess
+  // whose marks they are looking at.
+  const cards = watched.length
     ? await withTenant(school.id, (tx) =>
-        tx
-          .select()
-          .from(attendanceRecords)
-          .where(
-            and(
-              eq(attendanceRecords.schoolId, school.id),
-              eq(attendanceRecords.studentId, watched[0].id),
-            ),
-          )
-          .orderBy(desc(attendanceRecords.onDate))
-          .limit(10),
+        Promise.all(
+          watched.map(async (s) => {
+            const section = await sectionOfStudent(tx, school.id, s.id);
+            const week = section ? await scheduleFor(tx, school.id, { sectionIds: [section.id] }) : [];
+            return {
+              student: s,
+              section,
+              todayClasses: week.filter((e) => e.weekday === weekday),
+              marks: await tx
+                .select()
+                .from(attendanceRecords)
+                .where(
+                  and(
+                    eq(attendanceRecords.schoolId, school.id),
+                    eq(attendanceRecords.studentId, s.id),
+                  ),
+                )
+                .orderBy(desc(attendanceRecords.onDate))
+                .limit(5),
+            };
+          }),
+        ),
       )
     : [];
 
@@ -270,30 +284,60 @@ export default async function Dashboard() {
         </Section>
       )}
 
-      {watched.length > 0 && (
-        <Section
-          title={data.mine.length ? "Your attendance" : "Your children"}
-          subtitle={watched.map((s) => `${s.firstName} ${s.lastName}`).join(", ")}
-          flush={recent.length > 0}
-        >
-          {recent.length === 0 ? (
-            <EmptyState title="Nothing recorded yet this school year">
-              Marks appear here as soon as a teacher submits a class.
-            </EmptyState>
-          ) : (
-            <Table head={["Date", "Mark"]} minWidth={320}>
-              {recent.map((r) => (
-                <tr key={r.id}>
-                  <td>{prettyDate(r.onDate)}</td>
-                  <td>
-                    <StatusBadge status={r.status} />
-                  </td>
-                </tr>
-              ))}
-            </Table>
-          )}
-        </Section>
-      )}
+      {cards.map(({ student, section, todayClasses, marks }) => {
+        const today = marks.find((m) => m.onDate === date);
+        const own = student.claimedByUserId === session.userId;
+        return (
+          <Section
+            key={student.id}
+            title={own ? "You" : `${student.firstName} ${student.lastName}`}
+            subtitle={
+              [
+                section ? `${section.level} ${section.name}` : "Not placed in a section yet",
+                section?.adviserName ? `Adviser: ${section.adviserName}` : null,
+                todayClasses.length
+                  ? `${todayClasses.length} ${todayClasses.length === 1 ? "class" : "classes"} today, first at ${prettyTime(todayClasses[0].startsAt)}`
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")
+            }
+            actions={
+              <LinkButton href={`/child/${student.id}`} variant="secondary">
+                {own ? "Open my record" : `Open ${student.firstName}'s record`}
+              </LinkButton>
+            }
+          >
+            {marks.length === 0 ? (
+              <EmptyState title="No attendance recorded yet">
+                Marks appear here as soon as a teacher submits a class.
+              </EmptyState>
+            ) : (
+              <div className="grid gap-3">
+                <p>
+                  {today ? (
+                    <>
+                      Today: <StatusBadge status={today.status} />
+                    </>
+                  ) : (
+                    <span className="text-muted">No mark for today yet.</span>
+                  )}
+                </p>
+                <Table head={["Date", "Mark"]} minWidth={320}>
+                  {marks.map((r) => (
+                    <tr key={r.id}>
+                      <td>{prettyDate(r.onDate)}</td>
+                      <td>
+                        <StatusBadge status={r.status} />
+                      </td>
+                    </tr>
+                  ))}
+                </Table>
+              </div>
+            )}
+          </Section>
+        );
+      })}
 
       {data.alerts.length > 0 && (
         <Section title="Alerts">

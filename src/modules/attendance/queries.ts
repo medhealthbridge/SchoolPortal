@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, inArray, isNull, lte, sql } from "drizzle-orm";
 import type { Tx } from "@/db";
 import {
   attendanceRecords,
@@ -63,6 +63,7 @@ export async function slotsForTeacher(
         eq(timetableSlots.schoolId, schoolId),
         eq(timetableSlots.teacherUserId, teacherUserId),
         eq(timetableSlots.weekday, weekday),
+        isNull(timetableSlots.retiredAt),
       ),
     )
     .orderBy(asc(timetableSlots.startsAt));
@@ -195,7 +196,13 @@ export async function dailySummary(
   const [expected] = await tx
     .select({ n: count() })
     .from(timetableSlots)
-    .where(and(eq(timetableSlots.schoolId, schoolId), eq(timetableSlots.weekday, weekday)));
+    .where(
+      and(
+        eq(timetableSlots.schoolId, schoolId),
+        eq(timetableSlots.weekday, weekday),
+        isNull(timetableSlots.retiredAt),
+      ),
+    );
 
   const submitted = await tx
     .selectDistinct({ slotId: attendanceRecords.slotId })
@@ -240,7 +247,13 @@ export async function unsubmittedSlots(
     .innerJoin(subjects, eq(subjects.id, timetableSlots.subjectId))
     .innerJoin(sections, eq(sections.id, timetableSlots.sectionId))
     .innerJoin(users, eq(users.id, timetableSlots.teacherUserId))
-    .where(and(eq(timetableSlots.schoolId, schoolId), eq(timetableSlots.weekday, weekday)))
+    .where(
+      and(
+        eq(timetableSlots.schoolId, schoolId),
+        eq(timetableSlots.weekday, weekday),
+        isNull(timetableSlots.retiredAt),
+      ),
+    )
     .orderBy(asc(timetableSlots.startsAt));
 
   return all.filter((s) => !done.has(s.id));

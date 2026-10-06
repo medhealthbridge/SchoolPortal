@@ -31,9 +31,9 @@ export const ROLE_LABELS: Record<Role, string> = {
 
 export const ROLE_SCOPES: Record<Role, string> = {
   school_admin: "One school: setup, users, modules, subscription",
-  principal: "Dashboards, approvals, all academic data",
-  registrar: "Student records, enrollment, sections",
-  teacher: "Own classes: attendance, grades, incident reports",
+  principal: "Dashboards, all academic data, teachers and the class schedule",
+  registrar: "Student records, enrolment, sections, teachers and the class schedule",
+  teacher: "Own classes: attendance, grades, incident reports, inviting parents",
   adviser: "Teacher rights plus the whole advisory section",
   discipline_officer: "Discipline cases and sanctions",
   guidance_counselor: "Confidential cases",
@@ -52,6 +52,8 @@ export type Permission =
   | "school.manage"
   | "school.billing.view"
   | "users.manage"
+  | "staff.manage"
+  | "guardians.invite"
   | "students.manage"
   | "students.view"
   | "sections.manage"
@@ -83,6 +85,8 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "school.manage",
     "school.billing.view",
     "users.manage",
+    "staff.manage",
+    "guardians.invite",
     // Student records belong to the registrar alone. The admin can read them
     // (and can give the registrar role to whoever should keep them).
     "students.view",
@@ -99,6 +103,12 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "audit.view",
   ],
   principal: [
+    // The principal adds teachers and builds the schedule; students stay the
+    // registrar's.
+    "staff.manage",
+    "guardians.invite",
+    "sections.manage",
+    "timetable.manage",
     "students.view",
     "attendance.view_all",
     "grades.view_all",
@@ -108,14 +118,20 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "audit.view",
   ],
   registrar: [
+    "staff.manage",
+    "guardians.invite",
     "students.manage",
     "students.view",
     "sections.manage",
+    "timetable.manage",
     "registrar.manage",
     "grades.view_all",
     "reports.view",
   ],
   teacher: [
+    // Only for the students and sections they teach; checked in the action.
+    "guardians.invite",
+    "portal.post",
     "attendance.take",
     "grades.enter",
     "discipline.report",
@@ -123,6 +139,8 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "reports.view",
   ],
   adviser: [
+    "guardians.invite",
+    "portal.post",
     "attendance.take",
     "attendance.view_all",
     "grades.enter",

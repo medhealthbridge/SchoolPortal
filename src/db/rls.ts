@@ -14,6 +14,7 @@ export const TENANT_TABLES = [
   "invites",
   "students",
   "student_guardians",
+  "guardian_invites",
   "school_years",
   "sections",
   "enrollments",

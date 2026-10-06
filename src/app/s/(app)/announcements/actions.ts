@@ -7,6 +7,8 @@ import { announcements, notifications, studentGuardians, students, enrollments }
 import { requirePermission } from "@/lib/guard";
 import { audit } from "@/lib/audit";
 import { and } from "drizzle-orm";
+import { permissionsFor } from "@/lib/roles";
+import { sectionsOfTeacher } from "@/lib/schedule";
 
 type Result = { ok?: string; error?: string } | null;
 
@@ -20,6 +22,15 @@ export async function postAnnouncement(_prev: Result, form: FormData): Promise<R
   const body = String(form.get("body") ?? "").trim();
   const sectionId = String(form.get("sectionId") ?? "") || null;
   if (!title || !body) return { error: "An announcement needs a title and a message." };
+
+  // The office may post to the whole school or any section. A teacher posts
+  // to the sections they teach or advise, and only those.
+  const wide = permissionsFor(session.roles).has("staff.manage");
+  if (!wide) {
+    if (!sectionId) return { error: "Choose one of your sections." };
+    const mine = await withTenant(school.id, (tx) => sectionsOfTeacher(tx, school.id, session.userId));
+    if (!mine.some((s) => s.id === sectionId)) return { error: "You can post only to your own sections." };
+  }
 
   const reached = await withTenant(school.id, async (tx) => {
     const [row] = await tx

@@ -309,6 +309,7 @@ async function excuseSuspension(
       and(
         eq(timetableSlots.schoolId, schoolId),
         eq(timetableSlots.sectionId, enrolment.sectionId),
+        isNull(timetableSlots.retiredAt),
       ),
     );
   if (slots.length === 0) return 0;

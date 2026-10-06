@@ -12,7 +12,6 @@ import {
   seatPlans,
   sections,
   subjects,
-  timetableSlots,
   userRoles,
   users,
 } from "@/db/schema";
@@ -140,75 +139,6 @@ export async function addRoom(_prev: ActionResult, form: FormData): Promise<Acti
   return { ok: `${name} added.` };
 }
 
-export async function addTimetableSlot(
-  _prev: ActionResult,
-  form: FormData,
-): Promise<ActionResult> {
-  const { school, session } = await requirePermission("timetable.manage");
-  const teacherUserId = String(form.get("teacherUserId") ?? "");
-  const subjectId = String(form.get("subjectId") ?? "");
-  const sectionId = String(form.get("sectionId") ?? "");
-  const roomId = String(form.get("roomId") ?? "") || null;
-  const weekday = Number(form.get("weekday") ?? 1);
-  const startsAt = String(form.get("startsAt") ?? "");
-  const endsAt = String(form.get("endsAt") ?? "");
-  if (!teacherUserId || !subjectId || !sectionId || !startsAt || !endsAt)
-    return { error: "Pick a teacher, subject, section and time." };
-  if (endsAt <= startsAt) return { error: "The class has to end after it starts." };
-
-  const result = await withTenant(school.id, async (tx) => {
-    const [year] = await tx
-      .select()
-      .from(schoolYears)
-      .where(and(eq(schoolYears.schoolId, school.id), eq(schoolYears.isCurrent, true)))
-      .limit(1);
-    if (!year) return { error: "Set the current school year first." };
-
-    // A teacher cannot be in two rooms at once.
-    const clashes = await tx
-      .select({ id: timetableSlots.id, startsAt: timetableSlots.startsAt, endsAt: timetableSlots.endsAt })
-      .from(timetableSlots)
-      .where(
-        and(
-          eq(timetableSlots.schoolId, school.id),
-          eq(timetableSlots.teacherUserId, teacherUserId),
-          eq(timetableSlots.weekday, weekday),
-        ),
-      );
-    if (clashes.some((c) => startsAt < c.endsAt && endsAt > c.startsAt))
-      return { error: "That teacher already has a class at this time." };
-
-    const [row] = await tx
-      .insert(timetableSlots)
-      .values({
-        schoolId: school.id,
-        schoolYearId: year.id,
-        teacherUserId,
-        subjectId,
-        sectionId,
-        roomId,
-        weekday,
-        startsAt,
-        endsAt,
-      })
-      .returning();
-    await audit(tx, {
-      schoolId: school.id,
-      actorUserId: session.userId,
-      actorLabel: session.name,
-      action: "timetable.slot_added",
-      entity: "timetable_slots",
-      entityId: row.id,
-      after: { weekday, startsAt, endsAt },
-    });
-    return { ok: "Class added to the timetable." };
-  });
-
-  revalidatePath("/setup");
-  return result;
-}
-
-/** Seat plans are saved per room and section, not per teacher. */
 export async function saveSeatPlan(
   schoolIdIgnored: string,
   sectionId: string,
@@ -278,25 +208,37 @@ export async function acceptInvite(token: string, name: string, password: string
       .limit(1);
     if (!invite || invite.acceptedAt) return { error: "That invite is no longer valid." };
 
-    const [user] = await tx
-      .insert(users)
-      .values({
-        schoolId: school.id,
-        email: invite.email,
-        name: name || invite.name,
-        passwordHash: await hashPassword(password),
-        status: "active",
-      })
-      .onConflictDoUpdate({
-        target: [users.schoolId, users.email],
-        set: { status: "active" },
-      })
-      .returning();
+    // Someone who already has an account here (a parent who is also joining
+    // as a teacher, say) keeps it and its password; the invite only adds the
+    // role. The password typed here is not used for them, and saying "account
+    // created" would send them to sign in with the wrong one.
+    const [existing] = await tx
+      .select()
+      .from(users)
+      .where(and(eq(users.schoolId, school.id), eq(users.email, invite.email)))
+      .limit(1);
 
-    await tx
-      .insert(userRoles)
-      .values({ schoolId: school.id, userId: user.id, role: invite.role })
-      .onConflictDoNothing();
+    const user =
+      existing ??
+      (
+        await tx
+          .insert(users)
+          .values({
+            schoolId: school.id,
+            email: invite.email,
+            name: name || invite.name,
+            passwordHash: await hashPassword(password),
+            status: "active",
+          })
+          .returning()
+      )[0]!;
+
+    const held = await tx
+      .select({ role: userRoles.role })
+      .from(userRoles)
+      .where(eq(userRoles.userId, user.id));
+    if (!held.some((h) => h.role === invite.role))
+      await tx.insert(userRoles).values({ schoolId: school.id, userId: user.id, role: invite.role });
     await tx.update(invites).set({ acceptedAt: new Date() }).where(eq(invites.id, invite.id));
     await audit(tx, {
       schoolId: school.id,
@@ -305,7 +247,12 @@ export async function acceptInvite(token: string, name: string, password: string
       action: "staff.invite_accepted",
       after: { role: invite.role },
     });
-    return { ok: "Account created.", userId: user.id };
+    return {
+      ok: existing
+        ? `You already have an account as ${existing.email}; the new role is added to it. Sign in with your existing password.`
+        : "Account created.",
+      userId: user.id,
+    };
   });
 }
 

@@ -3,7 +3,9 @@ import Link from "next/link";
 import { withTenant } from "@/db";
 import { requireUser } from "@/lib/guard";
 import { watchedStudents } from "@/lib/student-access";
-import { EmptyState, PageHeader, Section } from "@/components/ui";
+import { ActionForm } from "@/components/action-form";
+import { EmptyState, Field, Input, PageHeader, Section } from "@/components/ui";
+import { addChildByCode } from "./actions";
 import { ArrowRightIcon } from "@/components/icons";
 
 export const metadata = { title: "My records" };
@@ -15,7 +17,10 @@ export default async function MePage() {
     watchedStudents(tx, school.id, session),
   );
 
-  if (watched.length === 1) redirect(`/child/${watched[0].id}`);
+  const isParent = session.roles.includes("parent");
+  // One child and nothing else to do here: go straight to them. A parent
+  // stays, because this is also where they add a second child.
+  if (watched.length === 1 && !isParent) redirect(`/child/${watched[0].id}`);
 
   return (
     <>
@@ -26,8 +31,8 @@ export default async function MePage() {
       <Section title="Linked students">
         {watched.length === 0 ? (
           <EmptyState title="Nothing is linked to this account yet">
-            A parent links a child with the student ID and the parent code the school printed.
-            A student claims their own record the same way.
+            Open the invite link your child's teacher sent, or add a child below with the student
+            ID and parent code the school printed.
           </EmptyState>
         ) : (
           <ul className="-mx-1">
@@ -50,6 +55,22 @@ export default async function MePage() {
           </ul>
         )}
       </Section>
+
+      {isParent && (
+        <Section
+          title="Add another child"
+          subtitle="Have the student ID and parent code from the school? Or open the invite link your child's teacher sent, and sign in with this account."
+        >
+          <ActionForm action={addChildByCode} submitLabel="Add child">
+            <Field label="Student ID">
+              <Input name="studentNumber" required autoComplete="off" />
+            </Field>
+            <Field label="Parent code">
+              <Input name="code" required autoComplete="off" className="uppercase" />
+            </Field>
+          </ActionForm>
+        </Section>
+      )}
     </>
   );
 }

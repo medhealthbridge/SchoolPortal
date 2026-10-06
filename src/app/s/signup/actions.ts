@@ -4,7 +4,7 @@ import { goTo, type Navigation } from "@/lib/nav";
 import { and, eq, isNull } from "drizzle-orm";
 import { withTenant } from "@/db";
 import { studentGuardians, students, userRoles, users } from "@/db/schema";
-import { hashPassword } from "@/lib/password";
+import { hashPassword, verifyPassword } from "@/lib/password";
 import { audit } from "@/lib/audit";
 import { createSchoolSession, currentSchool } from "@/lib/session";
 import { attempt, retryMessage, SIGNUP } from "@/lib/throttle";
@@ -113,6 +113,25 @@ export async function parentSignUp(_prev: Result, formData: FormData): Promise<R
       .from(users)
       .where(and(eq(users.schoolId, school.id), eq(users.email, email)))
       .limit(1);
+
+    // An existing account is only reused by someone who can prove it is theirs.
+    // Without this check, a student ID, its parent code and somebody else's
+    // email were enough to be signed in as that person, with every child
+    // already linked to them.
+    if (existing) {
+      if (existing.status !== "active" || !(await verifyPassword(password, existing.passwordHash))) {
+        return {
+          error:
+            "An account with that email already exists. Enter its password to add this child, or sign in and add the child from My records.",
+        };
+      }
+      const held = await tx
+        .select({ role: userRoles.role })
+        .from(userRoles)
+        .where(eq(userRoles.userId, existing.id));
+      if (!held.some((r) => r.role === "parent"))
+        await tx.insert(userRoles).values({ schoolId: school.id, userId: existing.id, role: "parent" });
+    }
 
     let userId = existing?.id;
     if (!userId) {

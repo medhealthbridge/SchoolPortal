@@ -1,4 +1,4 @@
-import { and, asc, avg, count, eq, inArray, lte, sql } from "drizzle-orm";
+import { and, asc, avg, count, eq, inArray, isNull, lte, sql } from "drizzle-orm";
 import type { Tx } from "@/db";
 import {
   attendanceRecords,
@@ -224,6 +224,7 @@ export async function teachingLoad(tx: Tx, schoolId: string, teacherUserId: stri
       and(
         eq(timetableSlots.schoolId, schoolId),
         eq(timetableSlots.teacherUserId, teacherUserId),
+        isNull(timetableSlots.retiredAt),
       ),
     )
     .orderBy(asc(subjects.code));

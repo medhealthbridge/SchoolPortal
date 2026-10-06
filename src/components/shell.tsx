@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Avatar } from "./ui";
-import { ChevronRightIcon } from "./icons";
+import { ChevronRightIcon, MenuIcon } from "./icons";
 import { initialsOf } from "@/lib/brand";
 
 /**
@@ -83,7 +83,20 @@ export function AppShell({
   const isCurrent = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
   const current = nav.find((n) => isCurrent(n.href));
-  const tabs = nav.filter((n) => n.primary).slice(0, 5);
+  // Five tabs fit a phone. With more screens than that, the fifth is "More",
+  // which opens every screen, so nothing on the desktop sidebar is out of
+  // reach on a phone.
+  const overflow = nav.length > 5;
+  const tabs = nav.filter((n) => n.primary).slice(0, overflow ? 4 : 5);
+  const [moreOpen, setMoreOpen] = useState(false);
+  useEffect(() => setMoreOpen(false), [pathname]);
+  useEffect(() => {
+    if (!moreOpen) return;
+    const close = (e: KeyboardEvent) => e.key === "Escape" && setMoreOpen(false);
+    window.addEventListener("keydown", close);
+    return () => window.removeEventListener("keydown", close);
+  }, [moreOpen]);
+  const onTab = tabs.some((t) => isCurrent(t.href));
 
   const groups: { name: string | undefined; items: NavItem[] }[] = [];
   for (const item of nav) {
@@ -166,11 +179,53 @@ export function AppShell({
         </main>
       </div>
 
+      {/* Phone: every screen, opened from "More" */}
+      {overflow && moreOpen && (
+        <div className="fixed inset-0 z-20 lg:hidden" role="presentation">
+          <button
+            type="button"
+            aria-label="Close the menu"
+            className="absolute inset-0 bg-black/30"
+            onClick={() => setMoreOpen(false)}
+          />
+          <nav
+            id="more-menu"
+            aria-label="All screens"
+            className="absolute inset-x-0 bottom-0 max-h-[80dvh] overflow-y-auto rounded-t-[var(--r-card)] border-t border-line bg-surface px-3 pb-24 pt-3"
+          >
+            {groups.map((group, gi) => (
+              <div key={gi} className="flex flex-col gap-0.5 py-1.5">
+                {group.name && (
+                  <div className="px-2 pb-1 text-xs font-medium text-muted">{group.name}</div>
+                )}
+                {group.items.map((item) => {
+                  const on = isCurrent(item.href);
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      aria-current={on ? "page" : undefined}
+                      onClick={() => setMoreOpen(false)}
+                      className={`flex min-h-11 items-center gap-2 rounded-control px-2 no-underline ${
+                        on ? "bg-hover font-medium text-primary" : "text-ink hover:bg-subtle"
+                      }`}
+                    >
+                      {item.icon}
+                      <span className="truncate">{item.label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            ))}
+          </nav>
+        </div>
+      )}
+
       {/* Phone tab bar */}
       <nav
         aria-label="Sections"
-        className="fixed inset-x-0 bottom-0 z-10 grid border-t border-line bg-surface px-2 pb-2.5 pt-1.5 lg:hidden"
-        style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
+        className="fixed inset-x-0 bottom-0 z-30 grid border-t border-line bg-surface px-2 pb-2.5 pt-1.5 lg:hidden"
+        style={{ gridTemplateColumns: `repeat(${tabs.length + (overflow ? 1 : 0)}, minmax(0, 1fr))` }}
       >
         {tabs.map((item) => {
           const on = isCurrent(item.href);
@@ -188,6 +243,20 @@ export function AppShell({
             </Link>
           );
         })}
+        {overflow && (
+          <button
+            type="button"
+            aria-expanded={moreOpen}
+            aria-controls="more-menu"
+            onClick={() => setMoreOpen((o) => !o)}
+            className={`flex h-13 min-h-[52px] flex-col items-center justify-center gap-0.5 rounded-control text-xs ${
+              moreOpen || !onTab ? "bg-subtle font-semibold text-ink" : "font-medium text-muted"
+            }`}
+          >
+            <MenuIcon />
+            <span>More</span>
+          </button>
+        )}
       </nav>
     </div>
   );

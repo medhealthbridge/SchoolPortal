@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { and, desc, eq } from "drizzle-orm";
 import { withTenant } from "@/db";
@@ -10,6 +9,9 @@ import { reportCard } from "@/modules/grades/queries";
 import { balanceFor } from "@/modules/billing/queries";
 import { peso } from "@/lib/pricing";
 import { prettyDate } from "@/lib/format";
+import { scheduleFor, sectionOfStudent } from "@/lib/schedule";
+import { announcementsFor } from "@/lib/announcements";
+import { WeekView } from "@/components/week-view";
 import {
   CountLegend,
   EmptyState,
@@ -80,9 +82,15 @@ export default async function ChildPage({
           .limit(200)
       : [];
 
+    const section = await sectionOfStudent(tx, school.id, studentId);
     return {
       student,
       enrolment,
+      section,
+      week: section ? await scheduleFor(tx, school.id, { sectionIds: [section.id] }) : [],
+      news: on.has("portal")
+        ? await announcementsFor(tx, school.id, { sectionIds: section ? [section.id] : [] }, 5)
+        : [],
       marks,
       card:
         on.has("grades") && year
@@ -110,6 +118,7 @@ export default async function ChildPage({
             items={[
               data.student.studentNumber,
               data.enrolment ? `${data.enrolment.level} ${data.enrolment.name}` : null,
+              data.section?.adviserName ? `Adviser: ${data.section.adviserName}` : null,
             ]}
           />
         }
@@ -170,6 +179,58 @@ export default async function ChildPage({
         </Section>
       )}
 
+      <Section
+        title="Class schedule"
+        subtitle={
+          data.section
+            ? `${data.section.level} ${data.section.name}, every week.`
+            : "Not placed in a section yet."
+        }
+      >
+        <WeekView
+          entries={data.week}
+          show="teacher"
+          empty={
+            data.section
+              ? "The school has not put this section's classes on the schedule yet."
+              : "The registrar places each student in a section."
+          }
+        />
+      </Section>
+
+      {on.has("portal") && (
+        <Section
+          title="School news"
+          subtitle="For the whole school and for this child's section."
+          actions={
+            <LinkButton href="/announcements" variant="secondary">
+              All announcements
+            </LinkButton>
+          }
+        >
+          {data.news.length === 0 ? (
+            <EmptyState title="Nothing posted yet">
+              Announcements from the school and the class appear here.
+            </EmptyState>
+          ) : (
+            <ul className="-mx-1">
+              {data.news.map((n, i) => (
+                <li key={n.post.id} className={`px-1 py-3 ${i > 0 ? "border-t border-line" : ""}`}>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-medium">{n.post.title}</span>
+                    <Pill>{n.level ? `${n.level} ${n.section}` : "Whole school"}</Pill>
+                  </div>
+                  <p className="mt-1 max-w-[72ch] whitespace-pre-line text-muted">{n.post.body}</p>
+                  <span className="mt-1 block text-[13px] text-muted">
+                    {n.author ?? "The school"} · {prettyDate(n.post.postedAt)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Section>
+      )}
+
       {data.balance && (
         <Section
           title="School fees"
@@ -212,15 +273,6 @@ export default async function ChildPage({
         </Section>
       )}
 
-      {on.has("portal") && (
-        <p className="text-muted">
-          School notices appear on{" "}
-          <Link href="/announcements" className="font-medium underline underline-offset-2">
-            Announcements
-          </Link>
-          .
-        </p>
-      )}
     </>
   );
 }

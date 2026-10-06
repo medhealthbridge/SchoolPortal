@@ -1,6 +1,9 @@
-import { asc, desc, eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { withTenant } from "@/db";
-import { announcements, sections, users } from "@/db/schema";
+import { sections } from "@/db/schema";
+import { announcementsFor } from "@/lib/announcements";
+import { sectionOfStudent, sectionsOfTeacher } from "@/lib/schedule";
+import { watchedStudents } from "@/lib/student-access";
 import { requireModule, requireUser } from "@/lib/guard";
 import { permissionsFor } from "@/lib/roles";
 import { ActionForm } from "@/components/action-form";
@@ -24,28 +27,36 @@ export default async function AnnouncementsPage() {
   const { session } = await requireUser();
   const perms = permissionsFor(session.roles);
 
-  const data = await withTenant(school.id, async (tx) => ({
-    posts: await tx
-      .select({
-        post: announcements,
-        author: users.name,
-        level: sections.level,
-        section: sections.name,
-      })
-      .from(announcements)
-      .leftJoin(users, eq(users.id, announcements.postedByUserId))
-      .leftJoin(sections, eq(sections.id, announcements.sectionId))
-      .where(eq(announcements.schoolId, school.id))
-      .orderBy(desc(announcements.postedAt))
-      .limit(50),
-    sectionList: perms.has("portal.post")
-      ? await tx
-          .select({ id: sections.id, level: sections.level, name: sections.name })
-          .from(sections)
-          .where(eq(sections.schoolId, school.id))
-          .orderBy(asc(sections.level), asc(sections.name))
-      : [],
-  }));
+  const wide = perms.has("staff.manage");
+  const data = await withTenant(school.id, async (tx) => {
+    const staff = perms.has("students.view") || perms.has("portal.post");
+    const watched = staff ? [] : await watchedStudents(tx, school.id, session);
+    const theirSections = staff
+      ? []
+      : (
+          await Promise.all(watched.map((s) => sectionOfStudent(tx, school.id, s.id)))
+        ).flatMap((s) => (s ? [s.id] : []));
+    return {
+      posts: await announcementsFor(
+        tx,
+        school.id,
+        staff ? { everything: true } : { sectionIds: theirSections },
+      ),
+      sectionList: !perms.has("portal.post")
+        ? []
+        : wide
+          ? await tx
+              .select({ id: sections.id, level: sections.level, name: sections.name })
+              .from(sections)
+              .where(eq(sections.schoolId, school.id))
+              .orderBy(asc(sections.level), asc(sections.name))
+          : (await sectionsOfTeacher(tx, school.id, session.userId)).map((s) => ({
+              id: s.id,
+              level: s.level,
+              name: s.name,
+            })),
+    };
+  });
 
   return (
     <>
@@ -64,8 +75,8 @@ export default async function AnnouncementsPage() {
               <Input id="an-title" name="title" required placeholder="Early dismissal on Friday" />
             </Field>
             <Field label="Who it is for" htmlFor="an-section">
-              <Select id="an-section" name="sectionId" defaultValue="">
-                <option value="">The whole school</option>
+              <Select id="an-section" name="sectionId" defaultValue="" required={!wide}>
+                <option value="">{wide ? "The whole school" : "Choose one of your sections"}</option>
                 {data.sectionList.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.level} {s.name}

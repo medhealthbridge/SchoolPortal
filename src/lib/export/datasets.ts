@@ -173,6 +173,71 @@ const DATASETS: Dataset[] = [
   },
 
   {
+    key: "teachers",
+    label: "Teachers",
+    title: "Teachers",
+    permission: "staff.manage",
+    columns: [
+      { key: "name", label: "Name" },
+      { key: "email", label: "Email" },
+      { key: "phone", label: "Phone", off: true },
+      { key: "advises", label: "Advises" },
+      { key: "classes", label: "Classes a week" },
+      { key: "subjects", label: "Subjects" },
+      { key: "status", label: "Account" },
+    ],
+    async load(tx, schoolId) {
+      const { teacherRoster } = await import("@/lib/staff");
+      return (await teacherRoster(tx, schoolId)).map((t) => ({
+        name: t.name,
+        email: t.email,
+        phone: t.phone,
+        advises: t.advises.join(", "),
+        classes: t.classesPerWeek,
+        subjects: t.subjects.join(", "),
+        status: t.status === "disabled" ? "Turned off" : word(t.status),
+      }));
+    },
+  },
+
+  {
+    key: "schedule",
+    label: "Class schedule",
+    title: "Class schedule",
+    permission: "timetable.manage",
+    columns: [
+      { key: "section", label: "Section" },
+      { key: "day", label: "Day" },
+      { key: "starts", label: "Starts" },
+      { key: "ends", label: "Ends" },
+      { key: "subject", label: "Subject" },
+      { key: "teacher", label: "Teacher" },
+      { key: "room", label: "Room" },
+    ],
+    async load(tx, schoolId) {
+      const { scheduleFor, dayName } = await import("@/lib/schedule");
+      const { prettyTime } = await import("@/lib/format");
+      const rows = await scheduleFor(tx, schoolId, {});
+      return rows
+        .sort(
+          (a, b) =>
+            a.sectionLabel.localeCompare(b.sectionLabel) ||
+            a.weekday - b.weekday ||
+            a.startsAt.localeCompare(b.startsAt),
+        )
+        .map((r) => ({
+          section: r.sectionLabel,
+          day: dayName(r.weekday),
+          starts: prettyTime(r.startsAt),
+          ends: prettyTime(r.endsAt),
+          subject: r.subjectName,
+          teacher: r.teacherName,
+          room: r.roomName ?? "",
+        }));
+    },
+  },
+
+  {
     key: "attendance",
     label: "Attendance",
     title: "Attendance",

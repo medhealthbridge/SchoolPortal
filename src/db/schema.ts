@@ -288,6 +288,39 @@ export const sections = pgTable(
   (t) => [unique("sections_uq").on(t.schoolYearId, t.level, t.name)],
 );
 
+/**
+ * A link a teacher sends to a parent: open it, make an account or sign in, and
+ * the child is linked. One invite links one child; the same parent email
+ * reuses one account, which is how a parent ends up with several children.
+ */
+export const guardianInvites = pgTable(
+  "guardian_invites",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    email: text("email").notNull(),
+    phone: text("phone"),
+    name: text("name").notNull(),
+    relationship: text("relationship").notNull().default("parent"),
+    token: text("token").notNull().unique(),
+    invitedByUserId: uuid("invited_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+    acceptedByUserId: uuid("accepted_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("guardian_invites_student_idx").on(t.schoolId, t.studentId)],
+);
+
 export const enrollments = pgTable(
   "enrollments",
   {
@@ -362,6 +395,13 @@ export const timetableSlots = pgTable(
     weekday: smallint("weekday").notNull(),
     startsAt: time("starts_at").notNull(),
     endsAt: time("ends_at").notNull(),
+    /**
+     * Set when a class is taken off the schedule after attendance was taken in
+     * it. Marks point at the class, and deleting it would delete them, so a
+     * class with history is retired instead: gone from every schedule and
+     * roster, still there behind its old marks.
+     */
+    retiredAt: timestamp("retired_at", { withTimezone: true }),
   },
   (t) => [index("timetable_teacher_idx").on(t.teacherUserId, t.weekday)],
 );

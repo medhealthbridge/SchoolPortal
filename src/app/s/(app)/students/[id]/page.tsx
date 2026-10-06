@@ -8,6 +8,9 @@ import { ActionForm } from "@/components/action-form";
 import { Button, Callout, LinkButton, Meta, PageHeader, Pill, Section } from "@/components/ui";
 import { restoreStudent, updateStudent, withdrawStudent } from "../actions";
 import { DeleteStudent } from "./delete-student";
+import { guardiansOf } from "@/lib/guardians";
+import { InviteParentForm } from "@/components/invite-parent";
+import { cancelParentInvite, unlinkParent } from "../../classes/actions";
 import { StudentFields } from "../fields";
 
 export const metadata = { title: "Student record" };
@@ -46,10 +49,10 @@ export default async function StudentRecordPage({
       .from(sections)
       .where(eq(sections.schoolId, school.id))
       .orderBy(asc(sections.level), asc(sections.name));
-    return { student, enrolment, sectionList };
+    return { student, enrolment, sectionList, family: await guardiansOf(tx, school.id, id) };
   });
   if (!data) notFound();
-  const { student, enrolment, sectionList } = data;
+  const { student, enrolment, sectionList, family } = data;
   const away = Boolean(student.archivedAt);
 
   return (
@@ -96,6 +99,67 @@ export default async function StudentRecordPage({
             sectionId={enrolment?.status === "active" ? enrolment.sectionId : undefined}
           />
         </ActionForm>
+      </Section>
+
+      <Section
+        title="Parents and guardians"
+        subtitle="Each sees this child's grades, attendance, schedule and school news. Unlinking takes that away at once."
+      >
+        {family.linked.length === 0 && family.pending.length === 0 ? (
+          <p className="mb-4 text-sm text-muted">No parent is linked yet.</p>
+        ) : (
+          <ul className="-mx-1 mb-4">
+            {family.linked.map((g, i) => (
+              <li
+                key={g.userId}
+                className={`flex flex-wrap items-center justify-between gap-2 px-1 py-2.5 ${i > 0 ? "border-t border-line" : ""}`}
+              >
+                <span className="min-w-0">
+                  <span className="block font-medium">
+                    {g.name} <span className="font-normal text-muted">({g.relationship})</span>
+                  </span>
+                  <span className="block text-[13px] text-muted">{g.email}</span>
+                </span>
+                <form action={unlinkParent}>
+                  <input type="hidden" name="studentId" value={student.id} />
+                  <input type="hidden" name="userId" value={g.userId} />
+                  <Button type="submit" variant="ghost">
+                    Unlink
+                  </Button>
+                </form>
+              </li>
+            ))}
+            {family.pending.map((w) => (
+              <li
+                key={w.id}
+                className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-1 py-2.5 first:border-t-0"
+              >
+                <span className="min-w-0">
+                  <span className="block font-medium">
+                    {w.name} <Pill tone="warn">Invite waiting</Pill>
+                  </span>
+                  <span className="block text-[13px] text-muted">{w.email}</span>
+                </span>
+                <form action={cancelParentInvite}>
+                  <input type="hidden" name="id" value={w.id} />
+                  <Button type="submit" variant="ghost">
+                    Cancel invite
+                  </Button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        )}
+        {!away && (
+          <details>
+            <summary className="flex min-h-11 cursor-pointer items-center text-sm font-medium underline underline-offset-2">
+              Invite a parent
+            </summary>
+            <div className="pt-3">
+              <InviteParentForm studentId={student.id} childName={student.firstName} />
+            </div>
+          </details>
+        )}
       </Section>
 
       <Section title="Account">
