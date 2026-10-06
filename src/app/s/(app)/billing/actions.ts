@@ -1,7 +1,7 @@
 "use server";
 
 import { and, eq } from "drizzle-orm";
-import { withTenant } from "@/db";
+import { withSchoolAccount } from "@/db";
 import { invoices } from "@/db/schema";
 import { requirePermission } from "@/lib/guard";
 import { createCheckout } from "@/lib/payments";
@@ -13,14 +13,14 @@ export type PayResult = { error?: string; goTo?: string } | null;
  * Hands the payer to the provider's own checkout page. Nothing is marked paid
  * here — the webhook does that when the money actually lands.
  *
- * The invoice is read inside this school's tenant context, so the id in the
+ * The invoice is read scoped to this school (in the central database), so the id in the
  * form can only ever name one of its own invoices.
  */
 export async function payInvoice(_prev: PayResult, form: FormData): Promise<PayResult> {
   const { school } = await requirePermission("school.billing.view");
   const invoiceId = String(form.get("invoiceId") ?? "");
 
-  const [invoice] = await withTenant(school.id, (tx) =>
+  const [invoice] = await withSchoolAccount(school.id, (tx) =>
     tx
       .select()
       .from(invoices)

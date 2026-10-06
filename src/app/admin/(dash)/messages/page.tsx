@@ -1,5 +1,5 @@
-import { desc, eq } from "drizzle-orm";
-import { withPlatform } from "@/db";
+import { desc } from "drizzle-orm";
+import { acrossHomes, db } from "@/db";
 import { outboundMessages, schools } from "@/db/schema";
 import { requireAdmin } from "@/lib/guard";
 import { Callout, EmptyState, PageHeader, Pill, Section, Table } from "@/components/ui";
@@ -18,16 +18,17 @@ const heldAll = (n: number) => (n === 1 ? "The one message here is held" : `All 
 
 export default async function MessagesPage() {
   await requireAdmin();
-  // withPlatform, not db: without it row-level security hands back only the
-  // messages that belong to no school, and every school's goes missing.
-  const rows = await withPlatform((tx) =>
-    tx
-      .select({ message: outboundMessages, school: schools })
-      .from(outboundMessages)
-      .leftJoin(schools, eq(schools.id, outboundMessages.schoolId))
-      .orderBy(desc(outboundMessages.sentAt))
-      .limit(100),
+  // Platform-wide, not db: without it row-level security hands back only the
+  // messages that belong to no school. A school with its own database keeps
+  // its messages there, so every database is read.
+  const sent = await acrossHomes((tx) =>
+    tx.select().from(outboundMessages).orderBy(desc(outboundMessages.sentAt)).limit(100),
   );
+  const named = new Map((await db.select().from(schools)).map((s) => [s.id, s]));
+  const rows = sent
+    .sort((a, b) => +b.sentAt - +a.sentAt)
+    .slice(0, 100)
+    .map((message) => ({ message, school: message.schoolId ? (named.get(message.schoolId) ?? null) : null }));
 
   const held = rows.filter((r) => r.message.status === "held").length;
   const failed = rows.filter((r) => r.message.status === "failed").length;

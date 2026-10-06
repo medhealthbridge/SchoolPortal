@@ -77,6 +77,30 @@ Three wrappers, in `src/db/index.ts`:
 > instead of `withPlatform`. `tests/hardening.test.ts` now walks
 > `src/app/admin` and fails if any file selects a tenant table through `db`.
 
+**A school can have a database of its own.** `schools.database_name` names
+it; null means the school lives in the shared database. The central database
+always holds the list of schools, platform admins and their sessions,
+subscriptions, invoices, payments, uploaded logos (`stored_files`), sign-in
+throttling and email codes. Everything else about a school — its people,
+records, its own sessions — lives in its home database, which holds a copy of
+its `schools` row only so foreign keys have something to point at (nothing
+reads that copy; the central row is the record).
+
+| Helper | Runs in | Use for |
+| --- | --- | --- |
+| `withTenant(id, fn)` | the school's home | Everything inside one school |
+| `withSchoolAccount(id, fn)` | central, scoped to the school | Its subscription and invoices |
+| `withPlatform(fn)` | central | Schools, billing, platform jobs |
+| `acrossHomes(fn)` | every database | Cross-school platform views (Outbox) |
+| `homeOf(id)` | the school's home | Its `sessions` rows |
+
+A school database is reached with the same `app_user` login (the URL is
+`APP_DATABASE_URL` with the database name swapped), so it stores no secret and
+row-level security still applies inside it. It is created by
+`createSchoolWithOwner({ ownDatabase: true })` before the central row exists
+(`src/db/provision.ts`), and `npm run db:migrate` migrates every school
+database after the shared one, so a deploy never leaves one behind.
+
 **RLS is a net, not the only guard.** A foreign key is checked *below* row
 security, so a well-formed request carrying another school's student id would
 otherwise attach to a row this school owns. `submitAttendance` checks the

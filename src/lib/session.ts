@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { cookies, headers } from "next/headers";
 import { and, eq, gt } from "drizzle-orm";
-import { db, withTenant } from "@/db";
+import { db, homeOf, withTenant } from "@/db";
 import { platformAdmins, schools, sessions, userRoles, users } from "@/db/schema";
 import type { Role } from "./roles";
 
@@ -16,7 +16,8 @@ function newSessionId() {
 export async function createSchoolSession(userId: string, schoolId: string) {
   const id = newSessionId();
   const expiresAt = new Date(Date.now() + DAYS * 86_400_000);
-  await db.insert(sessions).values({ id, userId, schoolId, expiresAt });
+  // In the school's own database when it has one: the row points at the user.
+  await (await homeOf(schoolId)).insert(sessions).values({ id, userId, schoolId, expiresAt });
   const jar = await cookies();
   jar.set(SCHOOL_COOKIE, id, {
     httpOnly: true,
@@ -46,8 +47,17 @@ export async function createAdminSession(platformAdminId: string) {
 export async function destroySession(cookieName: string) {
   const jar = await cookies();
   const id = jar.get(cookieName)?.value;
-  if (id) await db.delete(sessions).where(eq(sessions.id, id));
+  if (id) {
+    const school = cookieName === SCHOOL_COOKIE ? await currentSchool() : null;
+    const where = school ? await homeOf(school.id) : db;
+    await where.delete(sessions).where(eq(sessions.id, id));
+  }
   jar.delete(cookieName);
+}
+
+/** Signs a person out everywhere: after a password change, or a disabled account. */
+export async function endSessionsOf(schoolId: string, userId: string) {
+  await (await homeOf(schoolId)).delete(sessions).where(eq(sessions.userId, userId));
 }
 
 export type SchoolSession = {
@@ -67,14 +77,16 @@ export async function getSchoolSession(): Promise<SchoolSession | null> {
   const jar = await cookies();
   const id = jar.get(SCHOOL_COOKIE)?.value;
   if (!id) return null;
+  const school = await currentSchool();
+  if (!school) return null;
 
-  // `sessions` carries no row-level security, because it has to be readable
-  // before the school is known. Everything after it is read inside that
-  // school's tenant context.
-  const [row] = await db
+  // `sessions` carries no row-level security: it is read before the user is
+  // known. It is read from this school's own database, and must name this
+  // school; everything after it is read inside that school's tenant context.
+  const [row] = await (await homeOf(school.id))
     .select()
     .from(sessions)
-    .where(and(eq(sessions.id, id), gt(sessions.expiresAt, new Date())))
+    .where(and(eq(sessions.id, id), eq(sessions.schoolId, school.id), gt(sessions.expiresAt, new Date())))
     .limit(1);
   if (!row?.schoolId || !row.userId) return null;
 

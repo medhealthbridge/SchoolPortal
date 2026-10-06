@@ -1,6 +1,7 @@
 /**
- * Brings a database up to the current schema, then applies the grants and the
- * row-level security policies. Run with `npm run db:migrate`.
+ * Brings the shared database up to the current schema, then every school's
+ * own database, applying the grants and the row-level security policies to
+ * each. Run with `npm run db:migrate`.
  *
  * Versioned migrations rather than `drizzle-kit push`: push diffs the live
  * database and asks questions when the answer could lose data, which is right
@@ -11,35 +12,27 @@
  * it, then run this.
  */
 import "./load-env";
-import { drizzle } from "drizzle-orm/postgres-js";
-import { migrate } from "drizzle-orm/postgres-js/migrator";
 import postgres from "postgres";
-import { grantStatements, rlsStatements } from "./rls";
+import { prepareDatabase } from "./prepare";
+import { withDatabaseName } from "./index";
 
 const ownerUrl = process.env.DATABASE_URL;
 if (!ownerUrl) throw new Error("DATABASE_URL is not set");
 
-// The owner connection: migrations create tables, and RLS policies can only be
-// written by the table's owner. The app itself never connects this way.
+console.log("Shared database");
+await prepareDatabase(ownerUrl, console.log);
+
+// Schools with a database of their own get the same migrations, in the same
+// deploy, so the code never runs against a school database a version behind.
 const sql = postgres(ownerUrl, { max: 1, onnotice: () => {} });
-
-console.log("→ applying migrations");
-await migrate(drizzle(sql), { migrationsFolder: "./drizzle" });
-
-const tables: { tablename: string }[] =
-  await sql`select tablename from pg_tables where schemaname = 'public'`;
-
-console.log("→ granting app_user");
-for (const stmt of grantStatements(tables.map((t) => t.tablename))) {
-  await sql.unsafe(stmt);
-}
-
-// Re-applied every time: a new table added by a migration needs its policy,
-// and every statement in here is idempotent.
-console.log("→ applying row-level security");
-for (const stmt of rlsStatements()) {
-  await sql.unsafe(stmt);
-}
-
+const own: { name: string }[] =
+  await sql`select database_name as name from schools where database_name is not null order by created_at`;
 await sql.end();
-console.log("✓ database ready");
+
+for (const { name } of own) {
+  console.log(`School database ${name}`);
+  await prepareDatabase(withDatabaseName(ownerUrl, name), console.log);
+}
+
+console.log(`✓ ${own.length + 1} database(s) ready`);
+process.exit(0);

@@ -31,6 +31,7 @@ export async function createSchool(_prev: CreateSchoolResult, form: FormData): P
   const ownerName = String(form.get("ownerName") ?? "").trim();
   const ownerEmail = String(form.get("ownerEmail") ?? "").trim().toLowerCase();
   const type = String(form.get("type") ?? "k12");
+  const ownDatabase = String(form.get("storage") ?? "own") !== "shared";
 
   if (name.length < 2) return { error: "Enter the school's name." };
   const problem = subdomainProblem(subdomain);
@@ -41,19 +42,27 @@ export async function createSchool(_prev: CreateSchoolResult, form: FormData): P
   if (!z.string().email().safeParse(ownerEmail).success) return { error: "Enter the owner's email." };
   if (!["k12", "senior_high", "college"].includes(type)) return { error: "Choose the school type." };
 
-  const school = await createSchoolWithOwner({
-    subdomain,
-    name,
-    type: type as "k12" | "senior_high" | "college",
-    tier: tier as (typeof TIERS)[number],
-    ownerName,
-    ownerEmail,
-    // Never used: the owner sets their own through the link below.
-    passwordHash: await hashPassword(randomBytes(32).toString("base64url")),
-    branchNames: ["Main campus"],
-    actorLabel: `platform: ${admin.name}`,
-    action: "school.created_by_platform",
-  });
+  let school;
+  try {
+    school = await createSchoolWithOwner({
+      subdomain,
+      name,
+      type: type as "k12" | "senior_high" | "college",
+      tier: tier as (typeof TIERS)[number],
+      ownerName,
+      ownerEmail,
+      // Never used: the owner sets their own through the link below.
+      passwordHash: await hashPassword(randomBytes(32).toString("base64url")),
+      branchNames: ["Main campus"],
+      actorLabel: `platform: ${admin.name}`,
+      action: "school.created_by_platform",
+      ownDatabase,
+    });
+  } catch (err) {
+    console.error("createSchool", err);
+    const why = err instanceof Error ? err.message : String(err);
+    return { error: ownDatabase ? `The school's database could not be made: ${why}` : "The school could not be created. Try again." };
+  }
 
   const token = await withTenant(school.id, (tx) =>
     issueReset(tx, { schoolId: school.id, userId: school.ownerId, hours: 7 * 24 }),
@@ -61,7 +70,7 @@ export async function createSchool(_prev: CreateSchoolResult, form: FormData): P
 
   revalidatePath("/");
   return {
-    ok: `${name} is ready on a 30-day trial.`,
+    ok: `${name} is ready on a 30-day trial${ownDatabase ? ", in its own database" : ""}.`,
     signIn: schoolUrl(school.subdomain, "/login"),
     setPassword: schoolUrl(school.subdomain, `/reset/${token}`),
   };

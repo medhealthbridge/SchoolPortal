@@ -106,6 +106,11 @@ export const schools = pgTable(
     suspendedAt: timestamp("suspended_at", { withTimezone: true }),
     suspendedReason: text("suspended_reason"),
     onboardingStep: smallint("onboarding_step").notNull().default(1),
+    /**
+     * The school's own database, on the same server as this one. Null: the
+     * school's records live here, in the shared database.
+     */
+    databaseName: text("database_name").unique(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("schools_status_idx").on(t.status)],

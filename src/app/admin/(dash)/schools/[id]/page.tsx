@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { desc, eq } from "drizzle-orm";
-import { db, withPlatform } from "@/db";
+import { db, withPlatform, withTenant } from "@/db";
 import { auditLog, invoices, schoolModules, schools } from "@/db/schema";
 import { requireAdmin } from "@/lib/guard";
 import { MODULES, MODULE_KEYS } from "@/lib/modules";
@@ -29,21 +29,40 @@ export default async function SchoolDetail({ params }: { params: Promise<{ id: s
   const [school] = await db.select().from(schools).where(eq(schools.id, id)).limit(1);
   if (!school) notFound();
 
-  const data = await withPlatform(async (tx) => ({
-    modules: await tx.select().from(schoolModules).where(eq(schoolModules.schoolId, id)),
-    invoices: await tx
-      .select()
-      .from(invoices)
-      .where(eq(invoices.schoolId, id))
-      .orderBy(desc(invoices.period))
-      .limit(12),
-    audit: await tx
-      .select()
-      .from(auditLog)
-      .where(eq(auditLog.schoolId, id))
-      .orderBy(desc(auditLog.at))
-      .limit(15),
-  }));
+  // Modules and the school's own audit trail live where its records do; its
+  // invoices, and what the platform did to it, are in the central database.
+  const [own, central] = await Promise.all([
+    withTenant(id, async (tx) => ({
+      modules: await tx.select().from(schoolModules).where(eq(schoolModules.schoolId, id)),
+      audit: await tx
+        .select()
+        .from(auditLog)
+        .where(eq(auditLog.schoolId, id))
+        .orderBy(desc(auditLog.at))
+        .limit(15),
+    })),
+    withPlatform(async (tx) => ({
+      invoices: await tx
+        .select()
+        .from(invoices)
+        .where(eq(invoices.schoolId, id))
+        .orderBy(desc(invoices.period))
+        .limit(12),
+      audit: school.databaseName
+        ? await tx
+            .select()
+            .from(auditLog)
+            .where(eq(auditLog.schoolId, id))
+            .orderBy(desc(auditLog.at))
+            .limit(15)
+        : [],
+    })),
+  ]);
+  const data = {
+    modules: own.modules,
+    invoices: central.invoices,
+    audit: [...own.audit, ...central.audit].sort((a, b) => +b.at - +a.at).slice(0, 15),
+  };
   const students = await activeStudentCount(id);
   const moduleState = new Map(data.modules.map((m) => [m.moduleKey, m.enabled]));
 

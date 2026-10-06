@@ -275,6 +275,24 @@ another school's rows.
 every policy. It re-applies policies each run, so a table added by a migration
 gets its policy without a second step.
 
+### A database per school
+
+New schools get a database of their own, on the same server, named
+`sp_<address>` (hyphens become underscores). The platform admin's **Add a
+school** form asks (own database by default); self-registration follows
+`SCHOOL_DATABASES` (`own`, the default, or `shared`).
+
+- Creating one needs `DATABASE_URL` (the owner connection) at runtime and a
+  role allowed to create databases. On Neon the default owner role can.
+- Nothing extra to configure or store: the app reaches each school database
+  with its usual login.
+- `npm run db:migrate` (run on every production deploy) migrates the shared
+  database and then every school database.
+- Each school database is its own unit for backup, restore, export and
+  deletion: `pg_dump` / Neon's console work on it alone.
+- Schools created before this stay in the shared database. Moving one is a
+  manual export and import for now.
+
 ### Managed Postgres (Neon, Supabase, RDS)
 
 Nothing in the code is specific to one host, but the two-role requirement

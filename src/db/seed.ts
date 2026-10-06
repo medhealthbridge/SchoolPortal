@@ -7,7 +7,8 @@
  */
 import "./load-env";
 import { eq } from "drizzle-orm";
-import { db, withPlatform, withTenant } from "./index";
+import { db, everyHome, withPlatform, withTenant } from "./index";
+import { dropSchoolDatabase } from "./provision";
 import {
   branches,
   enrollments,
@@ -71,6 +72,8 @@ if (!["localhost", "127.0.0.1", "::1", "[::1]"].includes(target) && !process.arg
 
 async function main() {
   console.log("→ clearing");
+  // Schools made with a database of their own take it with them.
+  for (const home of await everyHome()) if (home.name) await dropSchoolDatabase(home.name);
   await withPlatform(async (tx) => {
     await tx.delete(schools);
   });

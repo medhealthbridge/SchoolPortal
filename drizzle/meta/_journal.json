@@ -57,6 +57,13 @@
       "when": 1791270886589,
       "tag": "0007_resets_and_materials",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791273363942,
+      "tag": "0008_school_database",
+      "breakpoints": true
     }
   ]
 }

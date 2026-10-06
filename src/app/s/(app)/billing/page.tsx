@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { desc, eq } from "drizzle-orm";
-import { withTenant } from "@/db";
+import { withSchoolAccount } from "@/db";
 import { invoices, subscriptions } from "@/db/schema";
 import { requirePermission } from "@/lib/guard";
 import { MODULES } from "@/lib/modules";
@@ -24,7 +24,7 @@ export const metadata = { title: "Billing" };
 export default async function BillingPage() {
   const { school } = await requirePermission("school.billing.view");
 
-  const data = await withTenant(school.id, async (tx) => ({
+  const data = await withSchoolAccount(school.id, async (tx) => ({
     sub: (
       await tx.select().from(subscriptions).where(eq(subscriptions.schoolId, school.id)).limit(1)
     )[0],

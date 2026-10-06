@@ -1,5 +1,7 @@
+import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { withPlatform, withTenant } from "@/db";
+import { createSchoolDatabase, databaseNameFor, dropSchoolDatabase } from "@/db/provision";
 import { branches, schools, subscriptions, userRoles, users } from "@/db/schema";
 import { audit } from "./audit";
 import { todayIso } from "./format";
@@ -8,6 +10,15 @@ import { PER_STUDENT_CENTAVOS, platformFeeCentavos, type TierKey } from "./prici
 import { applyTierModules, findSchoolBySubdomain, subdomainProblem } from "./tenant";
 
 export const TRIAL_DAYS = 30;
+
+/**
+ * Whether a school that signs itself up gets a database of its own. On by
+ * default; SCHOOL_DATABASES=shared keeps every new school in the shared one
+ * (for a host that cannot create databases).
+ */
+export function ownDatabaseByDefault(env: Record<string, string | undefined> = process.env) {
+  return (env.SCHOOL_DATABASES ?? "own").trim().toLowerCase() !== "shared";
+}
 
 export type NewSchool = {
   subdomain: string;
@@ -23,6 +34,12 @@ export type NewSchool = {
   /** Recorded in the audit log: who brought this school into being. */
   actorLabel: string;
   action: "school.registered" | "school.seeded" | "school.created_by_platform";
+  /**
+   * Keep the school's records in a database of its own rather than the
+   * shared one. Its database is made first, so the school never exists
+   * without it.
+   */
+  ownDatabase?: boolean;
 };
 
 /**
@@ -37,12 +54,27 @@ export type NewSchool = {
  */
 export async function createSchoolWithOwner(input: NewSchool) {
   const email = input.ownerEmail.trim().toLowerCase();
+  const id = randomUUID();
+  const subdomain = input.subdomain.toLowerCase();
+  const databaseName = input.ownDatabase ? databaseNameFor(subdomain) : null;
+
+  if (databaseName) {
+    await createSchoolDatabase(databaseName, {
+      id,
+      subdomain,
+      name: input.name,
+      ownerName: input.ownerName,
+      ownerEmail: email,
+    });
+  }
 
   const school = await withPlatform(async (tx) => {
     const [row] = await tx
       .insert(schools)
       .values({
-        subdomain: input.subdomain.toLowerCase(),
+        id,
+        databaseName,
+        subdomain,
         name: input.name,
         type: input.type,
         tier: input.tier,
@@ -71,10 +103,14 @@ export async function createSchoolWithOwner(input: NewSchool) {
       action: input.action,
       entity: "schools",
       entityId: row.id,
-      after: { subdomain: row.subdomain, tier: row.tier },
+      after: { subdomain: row.subdomain, tier: row.tier, ownDatabase: Boolean(databaseName) },
     });
 
     return row;
+  }).catch(async (err) => {
+    // The address was taken in the meantime, say: the empty database goes too.
+    if (databaseName) await dropSchoolDatabase(databaseName).catch(() => {});
+    throw err;
   });
 
   await applyTierModules(school.id, input.tier);

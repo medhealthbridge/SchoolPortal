@@ -1,6 +1,7 @@
 import "../src/db/load-env";
 import { eq } from "drizzle-orm";
 import { withPlatform, withTenant } from "@/db";
+import { dropSchoolDatabase } from "@/db/provision";
 import {
   branches,
   enrollments,
@@ -171,5 +172,6 @@ export async function makeSchool(opts: { tier?: "starter" | "all_in"; status?: "
 }
 
 export async function dropSchool(schoolId: string) {
-  await withPlatform((tx) => tx.delete(schools).where(eq(schools.id, schoolId)));
+  const [row] = await withPlatform((tx) => tx.delete(schools).where(eq(schools.id, schoolId)).returning());
+  if (row?.databaseName) await dropSchoolDatabase(row.databaseName);
 }

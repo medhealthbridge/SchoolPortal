@@ -8,7 +8,7 @@ import { checkImage, put } from "@/lib/storage";
 import { activationCode, hashPassword } from "@/lib/password";
 import { deliver } from "@/lib/messaging";
 import { subdomainAvailable, subdomainProblem } from "@/lib/tenant";
-import { createSchoolWithOwner } from "@/lib/onboarding";
+import { createSchoolWithOwner, ownDatabaseByDefault } from "@/lib/onboarding";
 
 export async function sendVerificationCode(email: string) {
   const parsed = z.string().email().safeParse(email.trim().toLowerCase());
@@ -126,6 +126,7 @@ export async function registerSchool(input: RegistrationInput, logoForm?: FormDa
     branchNames: data.branchNames,
     actorLabel: `${data.ownerName} <${email}>`,
     action: "school.registered",
+    ownDatabase: ownDatabaseByDefault(),
   });
 
   // The logo is optional and never blocks the school: it is saved after the

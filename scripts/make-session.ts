@@ -7,7 +7,7 @@
 import "../src/db/load-env";
 import { randomBytes } from "node:crypto";
 import { and, eq } from "drizzle-orm";
-import { db, withTenant } from "../src/db";
+import { db, homeOf, withTenant } from "../src/db";
 import { schools, sessions, users } from "../src/db/schema";
 
 const [sub, email] = process.argv.slice(2);
@@ -27,7 +27,7 @@ const [user] = await withTenant(school.id, (tx) =>
 if (!user) throw new Error(`No user ${email} at ${sub}`);
 
 const id = randomBytes(24).toString("base64url");
-await db.insert(sessions).values({
+await (await homeOf(school.id)).insert(sessions).values({
   id,
   userId: user.id,
   schoolId: school.id,

@@ -77,6 +77,12 @@ export function CreateSchoolForm({ root }: { root: string }) {
             <option value="college">College</option>
           </Select>
         </Field>
+        <Field label="Where its records are kept" hint="Its own database keeps them apart from every other school's.">
+          <Select name="storage" defaultValue="own">
+            <option value="own">Its own database</option>
+            <option value="shared">The shared database</option>
+          </Select>
+        </Field>
         <div className="sm:col-span-2">
           <Button type="submit" disabled={pending}>
             {pending ? "Creating" : "Create school"}

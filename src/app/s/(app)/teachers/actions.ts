@@ -4,8 +4,9 @@ import { revalidatePath } from "next/cache";
 import { randomBytes } from "node:crypto";
 import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
-import { db, withTenant } from "@/db";
-import { invites, sessions, userRoles, users } from "@/db/schema";
+import { withTenant } from "@/db";
+import { invites, userRoles, users } from "@/db/schema";
+import { endSessionsOf } from "@/lib/session";
 import { requirePermission } from "@/lib/guard";
 import { audit } from "@/lib/audit";
 import { deliver } from "@/lib/messaging";
@@ -119,7 +120,7 @@ export async function setTeacherStatus(form: FormData) {
     });
   });
   // Signed-in phones are signed out at once, not at the session's natural end.
-  if (status === "disabled") await db.delete(sessions).where(eq(sessions.userId, userId));
+  if (status === "disabled") await endSessionsOf(school.id, userId);
   revalidatePath("/teachers");
 }
 

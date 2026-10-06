@@ -1,12 +1,10 @@
 "use server";
 
-import { db, withTenant } from "@/db";
-import { sessions } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { withTenant } from "@/db";
 import { accountFor, issueReset, SELF_HOURS, useReset } from "@/lib/password-reset";
 import { deliver } from "@/lib/messaging";
 import { schoolUrl } from "@/lib/school-url";
-import { currentSchool } from "@/lib/session";
+import { currentSchool, endSessionsOf } from "@/lib/session";
 import { attempt, retryMessage, SIGNUP } from "@/lib/throttle";
 import { clientIp } from "@/lib/request";
 import { audit } from "@/lib/audit";
@@ -68,6 +66,6 @@ export async function setNewPassword(_prev: Result, form: FormData): Promise<Res
   });
   if ("error" in outcome) return { error: outcome.error };
   // Every phone and laptop still signed in with the old password is signed out.
-  await db.delete(sessions).where(eq(sessions.userId, outcome.userId));
+  await endSessionsOf(school.id, outcome.userId);
   return goTo("/login?reset=1");
 }
