@@ -498,7 +498,7 @@ Test a restore before you need one.
 
 ```bash
 npm run typecheck
-npm test                 # 167 tests, including the cross-tenant isolation gate
+npm test                 # 188 tests, including the cross-tenant isolation gate
 npm run build
 npm run responsive       # needs the dev server and a seeded database
 npm run smoke            # same

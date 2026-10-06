@@ -14,6 +14,8 @@ them, and you cannot see theirs.
 
 - [Getting in](#getting-in)
 - [First week: the school admin's setup](#first-week-the-school-admins-setup)
+- [Teachers and the class schedule](#teachers-and-the-class-schedule)
+- [Teachers: inviting parents](#teachers-inviting-parents)
 - [Teachers: taking attendance](#teachers-taking-attendance)
 - [Teachers: entering grades](#teachers-entering-grades)
 - [Discipline office](#discipline-office)
@@ -30,6 +32,10 @@ them, and you cannot see theirs.
 ---
 
 ## Getting in
+
+**On a phone**, the bar at the bottom holds the main screens. When there are
+more than five, the last button is **More**, which lists every screen you can
+reach.
 
 Everyone signs in at `yourschool.<domain>/login` — staff, parents and
 students at the same door.
@@ -81,8 +87,9 @@ ticks itself off as you go. Teachers cannot take attendance until it is done.
 | 3. Add your sections | A level and a name: "Grade 7", "Sampaguita" | Setup → Sections |
 | 4. Add subjects and rooms | A subject has a code and a name. A room has a grid — rows and columns — which becomes the seat plan | Setup → Subjects, Rooms |
 | 5. Add your students | The **registrar** adds them one by one or imports a spreadsheet, below | Students |
-| 6. Build the timetable | Teacher, subject, section, room, day, start and end time. One row per class per day | Setup → Timetable |
-| 7. Invite your staff | Name, email, role | People |
+| 6. Add your teachers | Name and email; they get a link to set a password | Teachers |
+| 7. Build the class schedule | Per section: subject, teacher, room, days and time, and the adviser | Schedule |
+| 8. Invite the other offices | Principal, registrar, cashier and the rest: name, email, role | People |
 | Optional: your profile | Address, phone, brand colour, logo — see below | Setup → School profile |
 
 **Enrolment is per school year.** A student who transfers sections keeps last
@@ -212,6 +219,62 @@ everything is as it was. The page also lists, in plain words, what each module
 tells the others.
 
 ---
+
+## Teachers and the class schedule
+
+The **registrar**, the **principal** and the **school admin** add teachers and
+build the schedule. When a teacher signs in, their week is already there; when a
+parent or student signs in, so is the child's.
+
+**Teachers → Add a teacher.** Name, email, and whether they also advise a
+section. The email fills itself in from the name and your school's address
+(maria.delacruz@yourschool…); put the teacher's own email instead if you want
+the invite emailed to them. Until email is set up, copy their link from
+**Waiting to join** and send it by text or chat. They open it and choose a
+password.
+
+The list shows each teacher's advisory section, classes a week and subjects.
+**Turn off** a teacher who leaves: they are signed out at once and can no longer
+sign in; their marks and grades stay. **Turn back on** reverses it. Office
+accounts (admin, registrar, principal) are changed on **People**, by the school
+admin only.
+
+**Schedule.** Pick a section. Then:
+
+- **Adviser.** Choose the teacher who advises it. They can then see the whole
+  section's attendance and grades.
+- **Add a class.** Subject, teacher, room (optional), start and end time, and
+  tick every day it meets. A Monday–Wednesday–Friday class is one entry.
+- **Clashes are refused.** If the teacher is teaching elsewhere, the section
+  already has a class, or the room is booked at that time, nothing is saved and
+  the page says exactly what it clashes with.
+- **Change** moves a class to another time, teacher or room, with the same
+  checks. **Remove** takes it off. A class that already has attendance is
+  retired instead of deleted, so its marks stay in the records.
+- **Download or print** the whole schedule as Excel or PDF at the bottom.
+
+**Who sees what.** A teacher's **Schedule** shows their week, and **My classes**
+lists their sections. A parent sees each child's week on the child's page; a
+student sees their own.
+
+## Teachers: inviting parents
+
+**My classes → a section → Invite a parent** under a student. Enter the parent's
+name, relationship, email (how they will sign in) and, if you have it, a mobile
+number. The link comes back on screen: **Copy link**, or **Text it** to open
+your phone's messages with it filled in. It is also emailed and texted when the
+school has a provider. A link works once and lasts 14 days.
+
+- A teacher can invite parents only for students in their own classes. The
+  registrar can invite for anyone, from the student's record.
+- **Siblings:** invite the same email for each child. The parent's second link
+  asks for the password they already chose, and the child joins the same
+  account. Nobody can use a link to get into someone else's account.
+- The registrar sees every parent linked to a student, and can **Unlink** one.
+
+**Announcements.** A teacher can post to the sections they teach or advise. The
+office can post to the whole school. A parent sees what went to the whole school
+and to their own children's sections, and nothing aimed at other classes.
 
 ## Teachers: taking attendance
 
@@ -401,13 +464,23 @@ exceptions.
 **A parent sees their own children. A student sees their own record.** Nothing
 else, ever — this is checked on the server, not merely hidden from the menu.
 
+**Joining.** Open the link your child's teacher sent, choose a password, and you
+are in. A second child: open their link and sign in with the same password, or
+go to **My children → Add another child** with the student ID and parent code
+the school printed.
+
 | You see | Where |
 | --- | --- |
-| Attendance, day by day | Your child's page / My records |
-| Grades and the report card, once the period is closed | same |
-| The balance owing, and what it is for | same |
-| Announcements from the school | Notices |
+| Each child's attendance today and recently | Today, one card per child |
+| The section, the adviser and today's classes | Today |
+| The weekly class schedule, with teachers and rooms | Your child's page |
+| Grades and the report card, once the period is closed | Your child's page |
+| News for the whole school and for the child's class | Your child's page, and Notices |
+| The balance owing, and what it is for | Your child's page |
 | Alerts | Sent to you |
+
+Discipline and guidance records are not shown to parents; those offices
+contact families directly.
 
 You are told when your child is marked absent — by SMS and in the portal, once
 per day rather than once per class. You are told when a report card is ready,
@@ -423,9 +496,9 @@ item is not security; this is.
 | Role | Reaches |
 | --- | --- |
 | School admin (owner) | One school: setup, users, modules, subscription |
-| Principal | Dashboards, approvals, all academic data |
-| Registrar | The only role that adds, edits, withdraws, deletes and imports students; also enrolment, sections and clearance |
-| Teacher | Own classes: attendance, grades, incident reports |
+| Principal | Dashboards, all academic data, teachers and the class schedule |
+| Registrar | The only role that adds, edits, withdraws, deletes and imports students; also teachers, the class schedule, sections and clearance |
+| Teacher | Own classes: attendance, grades, incident reports, inviting parents, posting to their sections |
 | Adviser | Teacher rights plus the whole advisory section |
 | Discipline officer | Discipline cases and sanctions |
 | Guidance counselor | Confidential cases |
