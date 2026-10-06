@@ -31,6 +31,8 @@ export const TENANT_TABLES = [
   // Grades
   "grading_periods",
   "scores",
+  "assessments",
+  "assessment_scores",
   // Portal
   "announcements",
   // Discipline

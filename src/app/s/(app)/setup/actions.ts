@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { and, eq } from "drizzle-orm";
 import { withTenant } from "@/db";
+import { guessGroup } from "@/modules/grades/deped";
 import { schools } from "@/db/schema";
 import {
   branches,
@@ -117,7 +118,7 @@ export async function addSubject(_prev: ActionResult, form: FormData): Promise<A
   const name = String(form.get("name") ?? "").trim();
   if (!code || !name) return { error: "A subject needs a code and a name." };
   await withTenant(school.id, (tx) =>
-    tx.insert(subjects).values({ schoolId: school.id, code, name }).onConflictDoNothing(),
+    tx.insert(subjects).values({ schoolId: school.id, code, name, gradingGroup: guessGroup(name) }).onConflictDoNothing(),
   );
   revalidatePath("/setup");
   return { ok: `${code} added.` };

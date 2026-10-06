@@ -3,6 +3,7 @@ import {
   boolean,
   customType,
   date,
+  doublePrecision,
   index,
   integer,
   jsonb,
@@ -357,6 +358,11 @@ export const subjects = pgTable(
       .references(() => schools.id, { onDelete: "cascade" }),
     code: text("code").notNull(),
     name: text("name").notNull(),
+    /**
+     * Which DepEd weighting the class record uses (DO 8, s. 2015): how much
+     * Written Work, Performance Tasks and the Quarterly Assessment count.
+     */
+    gradingGroup: text("grading_group").notNull().default("languages"),
   },
   (t) => [unique("subjects_uq").on(t.schoolId, t.code)],
 );
@@ -722,6 +728,58 @@ export const scores = pgTable(
     unique("scores_uq").on(t.gradingPeriodId, t.studentId, t.subjectId),
     index("scores_student_idx").on(t.schoolId, t.studentId),
   ],
+);
+
+export const gradeComponent = pgEnum("grade_component", ["ww", "pt", "qa"]);
+
+/**
+ * One quiz, task or exam in a class record: Written Work, a Performance
+ * Task, or the Quarterly Assessment, with its highest possible score.
+ */
+export const assessments = pgTable(
+  "assessments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    sectionId: uuid("section_id")
+      .notNull()
+      .references(() => sections.id, { onDelete: "cascade" }),
+    subjectId: uuid("subject_id")
+      .notNull()
+      .references(() => subjects.id, { onDelete: "cascade" }),
+    gradingPeriodId: uuid("grading_period_id")
+      .notNull()
+      .references(() => gradingPeriods.id, { onDelete: "cascade" }),
+    component: gradeComponent("component").notNull(),
+    title: text("title").notNull(),
+    highestScore: doublePrecision("highest_score").notNull(),
+    givenOn: date("given_on"),
+    createdByUserId: uuid("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("assessments_class_idx").on(t.schoolId, t.sectionId, t.subjectId, t.gradingPeriodId)],
+);
+
+/** A learner's raw score on one assessment. */
+export const assessmentScores = pgTable(
+  "assessment_scores",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    assessmentId: uuid("assessment_id")
+      .notNull()
+      .references(() => assessments.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    raw: doublePrecision("raw").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique("assessment_scores_uq").on(t.assessmentId, t.studentId)],
 );
 
 /* ================================================================== *

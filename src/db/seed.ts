@@ -310,9 +310,9 @@ async function createSchool(args: SeedArgs) {
     const subjectRows = await tx
       .insert(subjects)
       .values([
-        { schoolId: school.id, code: "MATH7", name: "Mathematics 7" },
+        { schoolId: school.id, code: "MATH7", name: "Mathematics 7", gradingGroup: "math_science" },
         { schoolId: school.id, code: "ENG7", name: "English 7" },
-        { schoolId: school.id, code: "SCI7", name: "Science 7" },
+        { schoolId: school.id, code: "SCI7", name: "Science 7", gradingGroup: "math_science" },
       ])
       .returning();
 

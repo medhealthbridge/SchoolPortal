@@ -71,16 +71,21 @@ export default async function ReportPage({
           />
         }
         actions={
-          rows.length > 0 ? (
-            <LinkButton
-              href={`/api/attendance/report.csv?${query}`}
-              variant="secondary"
-              prefetch={false}
-            >
-              <DownloadIcon />
-              Export this month
+          <span className="flex flex-wrap gap-2">
+            <LinkButton href={`/attendance/sf2?${query}`} variant="secondary">
+              SF2 daily sheet
             </LinkButton>
-          ) : null
+            {rows.length > 0 && (
+              <LinkButton
+                href={`/api/attendance/report.csv?${query}`}
+                variant="secondary"
+                prefetch={false}
+              >
+                <DownloadIcon />
+                Export this month
+              </LinkButton>
+            )}
+          </span>
         }
       />
 

@@ -169,6 +169,8 @@ export async function toPdf(opts: {
   subtitle?: string;
   columns: ExportColumn[];
   rows: ExportRow[];
+  /** Lines printed under the table: a legend, signatures. */
+  notes?: string[];
 }): Promise<Uint8Array> {
   const { columns, rows } = opts;
   const doc = await PDFDocument.create();
@@ -261,6 +263,18 @@ export async function toPdf(opts: {
     });
   }
   for (const row of cells) drawRow(row, false);
+
+  for (const note of opts.notes ?? []) {
+    for (const ln of wrap(font, printable(font, note), 9, usable)) {
+      if (y - 14 < margin + 18) {
+        page = doc.addPage([pw, ph]);
+        pages.push(page);
+        y = ph - margin;
+      }
+      y -= 14;
+      page.drawText(ln, { x: margin, y, size: 9, font, color: rgb(0.1, 0.1, 0.1) });
+    }
+  }
 
   pages.forEach((p, i) =>
     p.drawText(`Page ${i + 1} of ${pages.length}`, {

@@ -14,7 +14,7 @@ import { requirePermission } from "@/lib/guard";
 import { can } from "@/lib/roles";
 import Link from "next/link";
 import { ActionForm } from "@/components/action-form";
-import { Field, Input, PageHeader, Pill, Section } from "@/components/ui";
+import { Field, Input, PageHeader, Pill, Section, LinkButton } from "@/components/ui";
 import {
   addRoom,
   addSection,
@@ -255,7 +255,18 @@ export default async function SetupPage() {
             ? `${data.year.name}, running ${data.year.startsOn} to ${data.year.endsOn}`
             : "Enrollment is per school year, so a transfer never rewrites history."
         }
+        actions={
+          data.year ? (
+            <LinkButton href="/setup/new-year">Start the next school year</LinkButton>
+          ) : null
+        }
       >
+        {data.year && (
+          <p className="text-sm text-muted">
+            At the end of the year, <a href="/setup/new-year">Start the next school year</a> moves every
+            section and its learners up a level. The form below only renames or re-dates a year.
+          </p>
+        )}
         <ActionForm action={createSchoolYear} submitLabel="Set as current year">
           <Field label="Name">
             <Input name="name" placeholder="2026–2027" required />

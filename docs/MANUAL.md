@@ -197,6 +197,23 @@ Guidance cases are not downloadable; that office keeps its records to itself.
 CSV files use the column names as headings, so a downloaded student sheet can
 be edited and imported again. Every download is written to the audit log.
 
+### Starting the next school year
+
+At the end of the year, after the last quarter is closed: Setup → School year
+→ **Start the next school year**. The page shows, before anything changes,
+what will happen to every learner:
+
+- **Promoted**: general average 75 or more (or nothing graded). They move up a
+  level with their section: Grade 7 Rizal becomes Grade 8 Rizal.
+- **Kept at their level**: general average below 75. Each is listed with a
+  choice, so a learner who passed remedial classes can be promoted instead.
+- **Graduating**: passed Grade 12.
+
+Name the new year and its dates, tick the box, and start it. Last year's
+grades, attendance and records stay as they were. Incoming Grade 7 (or
+Kinder) learners and their sections are added as usual, and the **schedule is
+built again** in Schedule, since teachers and rooms change.
+
 ### Your school's profile and logo
 
 **Setup → School profile.** Only the school admin sees it; the registrar can
@@ -345,6 +362,18 @@ class — nothing is lost.
 If two people mark the same student in the same class on the same day, the
 later mark wins, and the earlier one stays in the audit log.
 
+### SF2: the daily attendance sheet
+
+Attendance → Report → **SF2 daily sheet**, or **SF2 daily attendance** on your
+class list. One row per learner, one column per school day of the month, with
+the month's absences and tardies, and how many were present each day.
+Download it as **Excel** or **PDF** to print and sign.
+
+A day is read from all of that learner's class marks: **A** only if absent
+from every class, **L** if late to any, **P** otherwise, **E** if excused, and
+blank if no class was marked. Advisers and teachers see their own sections;
+the office sees every section.
+
 ### The monthly report
 
 **Report** shows present, absent, late and excused per student for a month,
@@ -359,15 +388,35 @@ Student number,Name,Present,Absent,Late,Excused
 
 ## Teachers: entering grades
 
-1. Open **Grades**. The current grading period is named at the top.
-2. Pick your class.
-3. Type a score out of 100 for each student. Leave a box empty if there is no
-   score yet — a blank is not a zero and is left out of the average.
-4. Save.
+Grades follow DepEd Order 8, s. 2015. Open **Grades**, pick your class, and you
+land on its **class record** for the current quarter.
 
-**75 is the passing mark.** A score below it is counted on the "Below 75" tile
+1. **Add each quiz, task or exam** as you give it: Written Work, Performance
+   Task or Quarterly Assessment, a name, and the highest possible score.
+2. **Enter scores**: open it and type each learner's raw score. A box left
+   empty counts as 0 in the record, as on paper; a score above the highest
+   possible is refused.
+3. The **Quarterly grades** table works out each learner's percentage per
+   component, weights it, sums the initial grade and transmutes it with the
+   DepEd table (an initial 60 becomes 75). A learner shows no quarterly grade
+   until all three components have something in them.
+4. **Post grades to report cards** copies each quarterly grade onto the report
+   card. Post again after any change.
+
+**How a subject is weighted** is set once by the school office on the same
+page: Languages, AP and EsP 30/50/20; Science and Math 40/40/20; MAPEH and
+EPP/TLE 20/60/20; and the senior high groups. A new subject gets a sensible
+guess from its name.
+
+Prefer to compute grades elsewhere? **Enter grades directly** on the same page
+takes a quarterly grade out of 100 per learner, as before.
+
+**75 is the passing mark.** A grade below it is counted on the "Below 75" tile
 and, if Guidance is switched on, that office is told — the subject and the
 student, so somebody follows up.
+
+Only the teacher on the timetable for that class (and the school office) can
+open or change its record.
 
 ### Grading periods (school admin)
 
@@ -377,11 +426,18 @@ Grades → Grading periods. Add each quarter with its dates and its order.
 ready; every guardian is notified. You can reopen a period if you closed it
 early.
 
-### The report card
+### The report card (SF9)
 
-Grades → a student's card. Subjects down the side, periods across, with
-averages. If Attendance is on, their attendance totals appear on it; if SAO or
-the chaplain have logged service hours, those appear too.
+Grades → a student's card. Learning areas down the side, quarters across, the
+final grade with Passed or Failed, and the general average with its DepEd
+descriptor (Outstanding 90–100 down to Did Not Meet Expectations below 75). If
+Attendance is on, attendance totals appear on it; if SAO or the chaplain have
+logged service hours, those appear too.
+
+**Download SF9 (PDF)** prints the Learner's Progress Report Card with the LRN,
+grade and section, school year, descriptor legend, attendance, and lines for
+the adviser, school head and parent to sign. Parents can download their own
+child's.
 
 ---
 

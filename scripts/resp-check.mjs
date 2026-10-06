@@ -47,6 +47,7 @@ const PAGES = [
   ["stmary.lvh.me", "/students", admin],
   ["stmary.lvh.me", "/people", admin],
   ["stmary.lvh.me", "/modules", admin],
+  ["stmary.lvh.me", "/attendance/sf2", admin],
   ["stmary.lvh.me", "/billing", admin],
   ["stmary.lvh.me", "/audit", admin],
   ["stmary.lvh.me", "/attendance/report", admin],

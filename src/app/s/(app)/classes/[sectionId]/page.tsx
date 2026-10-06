@@ -103,6 +103,14 @@ export default async function ClassListPage({
             ]}
           />
         }
+        actions={
+          <a
+            href={`/attendance/sf2?section=${data.section.id}`}
+            className="inline-flex h-11 items-center rounded-control border border-line bg-surface px-4 text-sm font-medium text-ink no-underline shadow-control hover:bg-subtle"
+          >
+            SF2 daily attendance
+          </a>
+        }
       />
       <Section
         title="Students and their families"
