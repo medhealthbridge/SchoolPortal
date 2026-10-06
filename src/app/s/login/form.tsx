@@ -18,7 +18,15 @@ export default function LoginForm() {
       <Field label="Email or student ID" htmlFor="identifier">
         <Input id="identifier" name="identifier" autoComplete="username" required />
       </Field>
-      <Field label="Password" htmlFor="password">
+      <Field
+        label="Password"
+        htmlFor="password"
+        hint={
+          <a href="/forgot" className="font-medium text-ink underline underline-offset-2">
+            Forgot your password?
+          </a>
+        }
+      >
         <Input
           id="password"
           name="password"

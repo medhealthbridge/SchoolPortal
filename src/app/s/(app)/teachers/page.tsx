@@ -8,6 +8,7 @@ import { ExportPanel } from "@/components/export-panel";
 import { Button, EmptyState, Meta, PageHeader, Pill, Section, Table } from "@/components/ui";
 import { cancelTeacherInvite, setTeacherStatus } from "./actions";
 import { AddTeacherForm } from "./add-teacher";
+import { ResetLinkButton } from "@/components/reset-link";
 
 export const metadata = { title: "Teachers" };
 
@@ -86,6 +87,8 @@ export default async function TeachersPage() {
                 <td className="text-right">
                   {t.id !== session.userId &&
                     t.roles.every((r) => r === "teacher" || r === "adviser") && (
+                      <span className="flex flex-col items-end gap-1">
+                      {t.status === "active" && <ResetLinkButton userId={t.id} name={t.name} />}
                       <form action={setTeacherStatus}>
                         <input type="hidden" name="userId" value={t.id} />
                         <input
@@ -97,6 +100,7 @@ export default async function TeachersPage() {
                           {t.status === "disabled" ? "Turn back on" : "Turn off"}
                         </Button>
                       </form>
+                      </span>
                     )}
                 </td>
               </tr>

@@ -77,6 +77,16 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       ["attendance.take"],
     ),
     ...entry(
+      { href: "/materials", label: "Learning materials", short: "Lessons", icon: <ReportIcon />, group: "School" },
+      [
+        "attendance.take",
+        "attendance.view_own",
+        "attendance.view_own_children",
+        "timetable.manage",
+        "students.manage",
+      ],
+    ),
+    ...entry(
       { href: "/students", label: "Students", icon: <PeopleIcon />, primary: true, group: "School" },
       ["students.view"],
     ),

@@ -1,13 +1,18 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { currentSchool, getSchoolSession } from "@/lib/session";
-import { Panel } from "@/components/ui";
+import { Callout, Panel } from "@/components/ui";
 import { initialsOf } from "@/lib/brand";
 import LoginForm from "./form";
 
 export const metadata = { title: "Sign in" };
 
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ reset?: string }>;
+}) {
+  const { reset } = await searchParams;
   const school = await currentSchool();
   const session = await getSchoolSession();
   if (session && school && session.schoolId === school.id) redirect("/");
@@ -38,6 +43,13 @@ export default async function LoginPage() {
         <h1 className="text-2xl font-semibold tracking-[-0.02em]">{school?.name}</h1>
         <p className="mt-1 text-muted">Staff, students and parents all sign in here.</p>
       </div>
+      {reset === "1" && (
+        <div className="mb-4">
+          <Callout tone="ok" title="Password changed">
+            Sign in with your new password.
+          </Callout>
+        </div>
+      )}
       <Panel>
         <LoginForm />
       </Panel>

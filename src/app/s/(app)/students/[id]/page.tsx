@@ -10,6 +10,7 @@ import { restoreStudent, updateStudent, withdrawStudent } from "../actions";
 import { DeleteStudent } from "./delete-student";
 import { guardiansOf } from "@/lib/guardians";
 import { InviteParentForm } from "@/components/invite-parent";
+import { ResetLinkButton } from "@/components/reset-link";
 import { cancelParentInvite, unlinkParent } from "../../classes/actions";
 import { StudentFields } from "../fields";
 
@@ -120,6 +121,8 @@ export default async function StudentRecordPage({
                   </span>
                   <span className="block text-[13px] text-muted">{g.email}</span>
                 </span>
+                <span className="flex flex-wrap items-center gap-1">
+                {g.status === "active" && <ResetLinkButton userId={g.userId} name={g.name} />}
                 <form action={unlinkParent}>
                   <input type="hidden" name="studentId" value={student.id} />
                   <input type="hidden" name="userId" value={g.userId} />
@@ -127,6 +130,7 @@ export default async function StudentRecordPage({
                     Unlink
                   </Button>
                 </form>
+                </span>
               </li>
             ))}
             {family.pending.map((w) => (
@@ -176,6 +180,11 @@ export default async function StudentRecordPage({
           Parent code{" "}
           <span className="font-mono tracking-[0.06em]">{student.parentCode}</span>.
         </p>
+        {student.claimedByUserId && (
+          <div className="mt-3">
+            <ResetLinkButton userId={student.claimedByUserId} name={student.firstName} />
+          </div>
+        )}
       </Section>
 
       <Section

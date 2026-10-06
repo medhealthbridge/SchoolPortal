@@ -161,6 +161,28 @@ Set these as Production environment variables, marking the secrets
 | `BOOTSTRAP_SCHOOL_SUBDOMAIN`, `BOOTSTRAP_SCHOOL_NAME`, `BOOTSTRAP_OWNER_EMAIL`, `BOOTSTRAP_OWNER_PASSWORD` | Optional, **all four or none**: creates a first school and its owner, once. See below |
 | `CRON_SECRET` | Vercel sends it to the cron endpoint automatically |
 
+### Adding a school by hand
+
+**Platform admin → Add a school.** Name, address (filled in from the name),
+owner's name and email, plan and type. The school starts on a 30-day trial. The
+page gives you a link for the owner to choose their own password (it works
+once, for 7 days); send it to them. Nobody, including you, ever sees or sets
+their password.
+
+### File storage for learning materials
+
+Modules go straight from the teacher's browser to **Vercel Blob**, never
+through the app (a function takes at most 4.5 MB per request; a deck is often
+more). Connect a Blob store to the project and Vercel sets
+`BLOB_READ_WRITE_TOKEN`; without it, Learning materials says storage is not
+connected. Locally, files go to `.uploads/materials/`.
+
+Blob files are public at an unguessable address, which is what lets **View**
+open a PowerPoint in Microsoft's online viewer on a phone. The app only ever
+shows those addresses to people in the section. Blob storage is metered by
+Vercel (see the plan's included storage); shrinking the pictures before upload
+is what keeps a school's usage small.
+
 ### The first school
 
 Registering a school verifies the owner's email with a code, and a deployment
@@ -498,7 +520,7 @@ Test a restore before you need one.
 
 ```bash
 npm run typecheck
-npm test                 # 188 tests, including the cross-tenant isolation gate
+npm test                 # 199 tests, including the cross-tenant isolation gate
 npm run build
 npm run responsive       # needs the dev server and a seeded database
 npm run smoke            # same

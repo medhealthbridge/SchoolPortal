@@ -11,6 +11,7 @@ import { peso } from "@/lib/pricing";
 import { prettyDate } from "@/lib/format";
 import { scheduleFor, sectionOfStudent } from "@/lib/schedule";
 import { announcementsFor } from "@/lib/announcements";
+import { materialsFor } from "@/lib/materials";
 import { WeekView } from "@/components/week-view";
 import {
   CountLegend,
@@ -88,6 +89,9 @@ export default async function ChildPage({
       enrolment,
       section,
       week: section ? await scheduleFor(tx, school.id, { sectionIds: [section.id] }) : [],
+      materials: section
+        ? (await materialsFor(tx, school.id, [section.id])).length
+        : 0,
       news: on.has("portal")
         ? await announcementsFor(tx, school.id, { sectionIds: section ? [section.id] : [] }, 5)
         : [],
@@ -196,6 +200,19 @@ export default async function ChildPage({
               : "The registrar places each student in a section."
           }
         />
+      </Section>
+
+      <Section
+        title="Learning materials"
+        subtitle="Slides and handouts the teachers share with the class, to open again any time."
+      >
+        {data.materials > 0 ? (
+          <LinkButton href="/materials" variant="secondary">
+            Open {data.materials} {data.materials === 1 ? "module" : "modules"}
+          </LinkButton>
+        ) : (
+          <p className="text-muted">Nothing shared yet.</p>
+        )}
       </Section>
 
       {on.has("portal") && (

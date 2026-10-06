@@ -252,7 +252,7 @@ a screen looks colourful, something is wrong.
 ## Testing
 
 ```bash
-npm test     # 188 tests against a real Postgres, single fork
+npm test     # 199 tests against a real Postgres, single fork
 ```
 
 | File | Holds |

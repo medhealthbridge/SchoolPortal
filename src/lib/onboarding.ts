@@ -22,7 +22,7 @@ export type NewSchool = {
   branchNames: string[];
   /** Recorded in the audit log: who brought this school into being. */
   actorLabel: string;
-  action: "school.registered" | "school.seeded";
+  action: "school.registered" | "school.seeded" | "school.created_by_platform";
 };
 
 /**
@@ -79,7 +79,7 @@ export async function createSchoolWithOwner(input: NewSchool) {
 
   await applyTierModules(school.id, input.tier);
 
-  await withTenant(school.id, async (tx) => {
+  const ownerId = await withTenant(school.id, async (tx) => {
     for (const [i, name] of input.branchNames.entries()) {
       await tx.insert(branches).values({ schoolId: school.id, name, isMain: i === 0 });
     }
@@ -99,9 +99,10 @@ export async function createSchoolWithOwner(input: NewSchool) {
       userId: owner.id,
       role: "school_admin",
     });
+    return owner.id;
   });
 
-  return school;
+  return { ...school, ownerId };
 }
 
 /* ------------------------------------------------------------------ *

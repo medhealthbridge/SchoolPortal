@@ -1085,3 +1085,71 @@ export const storedFiles = pgTable("stored_files", {
   data: bytea("data").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+
+/* ------------------------------------------------------------------ *
+ * Password resets
+ * ------------------------------------------------------------------ */
+
+/**
+ * A one-time link to set a new password. Only a hash of the token is kept, so
+ * a copy of this table opens nothing. Made by the person themselves (emailed)
+ * or by the office for someone it manages (shown to send by hand).
+ */
+export const passwordResets = pgTable(
+  "password_resets",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull().unique(),
+    createdByUserId: uuid("created_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("password_resets_user_idx").on(t.userId)],
+);
+
+/* ------------------------------------------------------------------ *
+ * Learning materials
+ * ------------------------------------------------------------------ */
+
+/**
+ * A module a teacher uploads for a section and subject: slides, a handout, a
+ * worksheet. The file lives in storage; this row says whose it is and who may
+ * open it.
+ */
+export const learningMaterials = pgTable(
+  "learning_materials",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    sectionId: uuid("section_id")
+      .notNull()
+      .references(() => sections.id, { onDelete: "cascade" }),
+    subjectId: uuid("subject_id")
+      .notNull()
+      .references(() => subjects.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    description: text("description"),
+    fileUrl: text("file_url").notNull(),
+    fileName: text("file_name").notNull(),
+    contentType: text("content_type").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    originalBytes: integer("original_bytes"),
+    uploadedByUserId: uuid("uploaded_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("learning_materials_section_idx").on(t.schoolId, t.sectionId)],
+);

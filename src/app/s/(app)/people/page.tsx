@@ -6,6 +6,7 @@ import { requirePermission } from "@/lib/guard";
 import { ROLE_LABELS, ROLE_SCOPES, STAFF_ROLES } from "@/lib/roles";
 import { PageHeader, Pill, Section, Table } from "@/components/ui";
 import { InviteForm } from "./invite-form";
+import { ResetLinkButton } from "@/components/reset-link";
 import { ExportPanel } from "@/components/export-panel";
 
 export const metadata = { title: "People" };
@@ -50,7 +51,7 @@ export default async function PeoplePage() {
       </Section>
 
       <Section title="Accounts" subtitle="Staff are invited; students and parents claim their own." flush>
-        <Table head={["Name", "Email", "Roles", "Status"]}>
+        <Table head={["Name", "Email", "Roles", "Status", ""]} minWidth={760}>
           {data.staff.map((u) => (
             <tr key={u.id}>
               <td className="font-medium">{u.name}</td>
@@ -60,6 +61,11 @@ export default async function PeoplePage() {
                   "—"}
               </td>
               <td><Pill tone={u.status === "active" ? "ok" : "neutral"}>{u.status}</Pill></td>
+              <td className="text-right">
+                {u.id !== session.userId && u.status === "active" && (
+                  <ResetLinkButton userId={u.id} name={u.name} />
+                )}
+              </td>
             </tr>
           ))}
         </Table>

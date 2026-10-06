@@ -7,6 +7,7 @@ import { activeStudentCount } from "@/lib/invoicing";
 import { TIERS, peso } from "@/lib/pricing";
 import { EmptyState, PageHeader, Pill, Section, StatGrid, StatTile, Table } from "@/components/ui";
 import { prettyDate } from "@/lib/format";
+import { CreateSchoolForm } from "./create-school-form";
 
 export const metadata = { title: "Schools" };
 
@@ -30,6 +31,13 @@ export default async function SchoolsPage() {
   return (
     <>
       <PageHeader title="Schools" meta={`${rows.length} on the platform`} />
+
+      <Section
+        title="Add a school"
+        subtitle="For a school you signed up yourself. It starts on a 30-day trial, and the owner chooses their own password from the link this gives you."
+      >
+        <CreateSchoolForm root={root} />
+      </Section>
 
       {rows.length > 0 && (
         <StatGrid>

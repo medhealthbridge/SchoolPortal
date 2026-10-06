@@ -19,6 +19,7 @@
     "vercel-build": "node scripts/vercel-build.mjs"
   },
   "dependencies": {
+    "@vercel/blob": "^2.8.0",
     "drizzle-orm": "^0.45.3",
     "fflate": "^0.8.3",
     "next": "15.5.27",

@@ -54,6 +54,8 @@ export const TENANT_TABLES = [
   "registrar_requests",
   // Logos, when there is no bucket
   "stored_files",
+  "password_resets",
+  "learning_materials",
 ] as const;
 
 /** school_id is nullable here, so the policy has to allow the null rows too. */

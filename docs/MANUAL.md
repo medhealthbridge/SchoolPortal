@@ -16,6 +16,7 @@ them, and you cannot see theirs.
 - [First week: the school admin's setup](#first-week-the-school-admins-setup)
 - [Teachers and the class schedule](#teachers-and-the-class-schedule)
 - [Teachers: inviting parents](#teachers-inviting-parents)
+- [Teachers: learning materials](#teachers-learning-materials)
 - [Teachers: taking attendance](#teachers-taking-attendance)
 - [Teachers: entering grades](#teachers-entering-grades)
 - [Discipline office](#discipline-office)
@@ -65,7 +66,21 @@ they are not the student's birthdate — classmates know that.
 
 ### If you forget your password
 
-Ask the school admin. They can re-invite you, which lets you set a new one.
+Press **Forgot your password?** under the password box, and enter your email or
+student ID. A link to set a new one arrives by email; it works once, for an
+hour. Setting a new password signs out every phone and computer that was still
+signed in with the old one.
+
+No email address, or the school cannot send email yet? Ask the office:
+
+| Whose password | Who makes the link |
+| --- | --- |
+| A teacher's | The registrar, the principal or the school admin (Teachers → Reset password) |
+| A student's or a parent's | The registrar (Students → the student → Reset password) |
+| Anyone else's | The school admin (People → Reset password) |
+
+The office sees the link once, to give to the person in person or by text. It
+works once, for three days. Nobody at the school ever sees or sets your password.
 
 ### Too many tries
 
@@ -275,6 +290,26 @@ school has a provider. A link works once and lasts 14 days.
 **Announcements.** A teacher can post to the sections they teach or advise. The
 office can post to the whole school. A parent sees what went to the whole school
 and to their own children's sections, and nothing aimed at other classes.
+
+## Teachers: learning materials
+
+**Learning materials → Share a module.** Pick the section and subject, give it a
+title students will recognise ("Quarter 1, Module 3: Fractions"), add a note if
+you like, and choose the file: PowerPoint, Word, Excel, PDF or a picture.
+
+- **Large slide decks are made smaller first.** The pictures inside a PowerPoint
+  or Word file are shrunk before it uploads (photos pasted onto slides are
+  usually far bigger than they are shown). The page says how much smaller it
+  got. Video inside a deck is left as it is.
+- Files up to 100 MB after that. A larger deck: split it into parts.
+- A teacher shares with the sections and subjects they teach; the adviser with
+  any subject of their section; the office with any section.
+- **Remove** takes a module down; the person who shared it and the office can.
+
+**Students and parents** see every module shared with their section, by subject.
+**View** opens a PowerPoint, Word or Excel file in the browser, so a phone
+without PowerPoint can read it; **Download** saves it. Only people in that
+section can open them.
 
 ## Teachers: taking attendance
 
