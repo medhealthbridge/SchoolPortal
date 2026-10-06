@@ -80,7 +80,7 @@ ticks itself off as you go. Teachers cannot take attendance until it is done.
 | 2. Set the school year | Name it as your school does ("2026–2027"), with its start and end dates | Setup → School year |
 | 3. Add your sections | A level and a name: "Grade 7", "Sampaguita" | Setup → Sections |
 | 4. Add subjects and rooms | A subject has a code and a name. A room has a grid — rows and columns — which becomes the seat plan | Setup → Subjects, Rooms |
-| 5. Import your students | A CSV file, below | Setup → Import students |
+| 5. Add your students | The **registrar** adds them one by one or imports a spreadsheet, below | Students |
 | 6. Build the timetable | Teacher, subject, section, room, day, start and end time. One row per class per day | Setup → Timetable |
 | 7. Invite your staff | Name, email, role | People |
 | Optional: your profile | Address, phone, brand colour, logo — see below | Setup → School profile |
@@ -88,25 +88,92 @@ ticks itself off as you go. Teachers cannot take attendance until it is done.
 **Enrolment is per school year.** A student who transfers sections keeps last
 year's record exactly as it was; nothing is rewritten.
 
-### The student CSV
+### Student records belong to the registrar
 
-Three columns are required and one is optional:
+Only the **registrar** adds, edits, withdraws, deletes and imports students.
+The school admin can read the class list but cannot change a record, so give
+the registrar role to whoever keeps your records (People → invite, or add the
+role to yourself). Principals, teachers and the offices see a plain class list.
+
+What the registrar can keep for each learner follows what DepEd asks for on
+the enrolment form and shows on School Form 1:
+
+| Group | Fields |
+| --- | --- |
+| Identity | Student number (your school's own), LRN (12 digits), first, middle and last name, suffix |
+| Birth | Birth date, sex, place of birth, PSA birth certificate number |
+| Placement | Section for this school year |
+| Family | Guardian's name and phone, home address |
+| Background | Mother tongue, religion, indigenous group, learner with a disability, 4Ps beneficiary |
+
+Only the name and student number are required; the rest can be filled in later.
+Religion, indigenous group, disability and 4Ps are **sensitive personal
+information** under the Data Privacy Act. They appear only on the registrar's
+screens and are never ticked in a download unless the registrar ticks them.
+
+**Add a student** is a form at the top of **Students**. **Open a student** from
+the list to edit any field, move them to another section, withdraw or delete.
+
+- **Withdraw** keeps the record and everything attached to it. The student
+  leaves rosters, invoices and announcements; **Show withdrawn** brings them
+  back into view and **Restore** puts them back in their section.
+- **Delete** is only for a record entered by mistake. A student who already has
+  marks, grades, fees or discipline records cannot be deleted; withdraw them.
+- A student number or LRN can belong to only one student in a school, and the
+  form says who already has it.
+
+### Importing a spreadsheet
+
+Press **Download the spreadsheet template** on **Students**. It has every
+column and one worked example row. Fill in one row per student and upload it.
 
 ```csv
-student_number,first_name,last_name,section
-ST-2026-0001,Althea,Alonzo,Sampaguita
-ST-2026-0002,Bea,Hernandez,Sampaguita
+student_number,first_name,last_name,lrn,birth_date,sex,section
+ST-2026-0001,Althea,Alonzo,123456789012,2012-06-30,female,Grade 7 Sampaguita
 ```
 
-- `section` matches a section you already added, by name. Leave it out and the
-  student is imported without being enrolled in one.
-- **Errors are shown before anything is saved.** A missing name, a duplicate
-  student number, a bad line — you get the line numbers and nothing is
-  written. Fix the file and import again.
-- Importing the same file twice does not duplicate anyone; a student number
-  already on file is skipped.
-- Every imported student gets an activation code and a parent code. Print
-  them from the **Students** page.
+- Required: `student_number`, `first_name`, `last_name`. Every other column is
+  optional. Dates are `2012-06-30`; sex is `male` or `female`; `four_ps` is
+  `yes` or `no`.
+- `section` is the level and name together, as on the Setup page ("Grade 7
+  Sampaguita"). Leave it empty and the student is added without a section; a
+  section that does not exist is reported and those students are not placed.
+- **Errors are shown before anything is saved.** A missing name, a bad LRN, a
+  duplicate, a bad date: you get the line numbers and nothing is written.
+- Importing the same file twice adds nobody; students already on file are left
+  exactly as they were. It does not overwrite anyone's details.
+- Every new student gets an activation code and a parent code. Print them from
+  the **Students** page.
+- Save an Excel sheet as **CSV UTF-8** before importing it.
+
+### Downloads, templates and printing
+
+Every module page that holds records ends with a **Download or print** card:
+
+1. Tick the columns you need. A column you are not allowed to see is not
+   offered.
+2. Choose **Excel**, **PDF** or **CSV**.
+3. Optionally pick a date range, or **Include withdrawn students**.
+4. Tick **Blank template** for a file with only the headings, to fill in by
+   hand or by spreadsheet.
+5. Press **Download**.
+
+| Page | What it downloads | Who |
+| --- | --- | --- |
+| Students | The class list and learner details | Registrar (full); others the plain columns |
+| People | Staff and their roles | School admin |
+| Attendance → Report | Every mark in a date range | Those who may see all attendance |
+| Grades | Grades by period, section and subject | Those who may see all grades |
+| Discipline | Incidents in a date range | Discipline officer |
+| Fees | Fees charged and payments received | Accounting |
+| Registrar | Requests and whether they were cleared | Registrar |
+| SAO | Club members | SAO staff |
+| Chaplain | Service hours | Chaplain |
+| Audit log | Who changed what, in a date range | School admin, principal |
+
+Guidance cases are not downloadable; that office keeps its records to itself.
+CSV files use the column names as headings, so a downloaded student sheet can
+be edited and imported again. Every download is written to the audit log.
 
 ### Your school's profile and logo
 
@@ -356,7 +423,7 @@ item is not security; this is.
 | --- | --- |
 | School admin (owner) | One school: setup, users, modules, subscription |
 | Principal | Dashboards, approvals, all academic data |
-| Registrar | Student records, enrolment, sections |
+| Registrar | The only role that adds, edits, withdraws, deletes and imports students; also enrolment, sections and clearance |
 | Teacher | Own classes: attendance, grades, incident reports |
 | Adviser | Teacher rights plus the whole advisory section |
 | Discipline officer | Discipline cases and sanctions |

@@ -75,7 +75,7 @@ npm run dev
 secret and its current code.
 
 ```bash
-npm test          # 142 tests, including the cross-tenant isolation gate
+npm test          # 167 tests, including the cross-tenant isolation gate
 npm run typecheck
 npm run build
 ```

@@ -20,7 +20,9 @@
   },
   "dependencies": {
     "drizzle-orm": "^0.45.3",
+    "fflate": "^0.8.3",
     "next": "15.5.27",
+    "pdf-lib": "^1.17.1",
     "postgres": "^3.4.7",
     "react": "19.1.9",
     "react-dom": "19.1.9",

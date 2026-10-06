@@ -83,7 +83,8 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "school.manage",
     "school.billing.view",
     "users.manage",
-    "students.manage",
+    // Student records belong to the registrar alone. The admin can read them
+    // (and can give the registrar role to whoever should keep them).
     "students.view",
     "sections.manage",
     "timetable.manage",

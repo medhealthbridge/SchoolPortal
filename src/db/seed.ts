@@ -126,6 +126,7 @@ async function main() {
                    admin@stmary.example / password123
                    teacher: tcruz@stmary.example / password123
                    one account per office, all password123:
+                     registrar@stmary.example (the only one who edits students)
                      discipline@stmary.example  guidance@stmary.example
                      sao@stmary.example  chaplain@stmary.example  cashier@stmary.example
                    a student: ${stmary.sampleStudentNumber} / code ${stmary.sampleActivationCode}
@@ -204,10 +205,9 @@ async function createSchool(args: SeedArgs) {
         status: "active",
       })
       .returning();
-    await tx.insert(userRoles).values([
-      { schoolId: school.id, userId: owner.id, role: "school_admin" },
-      { schoolId: school.id, userId: owner.id, role: "registrar" },
-    ]);
+    await tx
+      .insert(userRoles)
+      .values({ schoolId: school.id, userId: owner.id, role: "school_admin" });
 
     const [principal] = await tx
       .insert(users)
@@ -239,7 +239,8 @@ async function createSchool(args: SeedArgs) {
     ]);
 
     // One account per office, so every module's screens have an owner.
-    const offices: { role: "discipline_officer" | "guidance_counselor" | "sao_staff" | "chaplain" | "accounting"; name: string; handle: string }[] = [
+    const offices: { role: "registrar" | "discipline_officer" | "guidance_counselor" | "sao_staff" | "chaplain" | "accounting"; name: string; handle: string }[] = [
+      { role: "registrar", name: "Teresa Villanueva", handle: "registrar" },
       { role: "discipline_officer", name: "Ramon Bautista", handle: "discipline" },
       { role: "guidance_counselor", name: "Grace Lim", handle: "guidance" },
       { role: "sao_staff", name: "Paolo Reyes", handle: "sao" },

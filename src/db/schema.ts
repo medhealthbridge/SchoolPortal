@@ -199,6 +199,23 @@ export const students = pgTable(
     studentNumber: text("student_number").notNull(),
     firstName: text("first_name").notNull(),
     lastName: text("last_name").notNull(),
+    middleName: text("middle_name"),
+    suffix: text("suffix"),
+    // The 12-digit Learner Reference Number DepEd issues once and the learner
+    // keeps for life. Unset until the registrar has it.
+    lrn: text("lrn"),
+    birthDate: date("birth_date"),
+    sex: text("sex"),
+    placeOfBirth: text("place_of_birth"),
+    motherTongue: text("mother_tongue"),
+    religion: text("religion"),
+    ipGroup: text("ip_group"),
+    fourPs: boolean("four_ps").notNull().default(false),
+    disability: text("disability"),
+    psaBirthCertNo: text("psa_birth_cert_no"),
+    address: text("address"),
+    guardianName: text("guardian_name"),
+    guardianPhone: text("guardian_phone"),
     activationCode: text("activation_code").notNull(),
     parentCode: text("parent_code").notNull(),
     claimedByUserId: uuid("claimed_by_user_id").references(() => users.id, {
@@ -211,6 +228,8 @@ export const students = pgTable(
   (t) => [
     // "A student number is unique within a school, not across the platform."
     unique("students_school_number_uq").on(t.schoolId, t.studentNumber),
+    // An LRN follows the learner, so it is unique within a school when given.
+    unique("students_school_lrn_uq").on(t.schoolId, t.lrn),
     index("students_school_idx").on(t.schoolId),
   ],
 );

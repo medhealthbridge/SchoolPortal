@@ -21,6 +21,7 @@ import {
   Table,
 } from "@/components/ui";
 import { openRequest, recheckRequest, releaseRequest } from "./actions";
+import { ExportPanel } from "@/components/export-panel";
 
 export const metadata = { title: "Registrar" };
 
@@ -40,7 +41,7 @@ const KIND_LABEL = {
 } as const;
 
 export default async function RegistrarPage() {
-  const { school } = await requirePermission("registrar.manage");
+  const { school, session } = await requirePermission("registrar.manage");
   const on = await enabledModules(school.id);
 
   const rows = await withTenant(school.id, (tx) =>
@@ -154,6 +155,7 @@ export default async function RegistrarPage() {
           </Table>
         )}
       </Section>
+      <ExportPanel dataset="registrar-requests" roles={session.roles} />
     </>
   );
 }

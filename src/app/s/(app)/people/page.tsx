@@ -7,11 +7,12 @@ import { ROLE_LABELS, ROLE_SCOPES, STAFF_ROLES } from "@/lib/roles";
 import { ActionForm } from "@/components/action-form";
 import { Field, Input, PageHeader, Pill, Section, Select, Table } from "@/components/ui";
 import { inviteStaff } from "../setup/actions";
+import { ExportPanel } from "@/components/export-panel";
 
 export const metadata = { title: "People" };
 
 export default async function PeoplePage() {
-  const { school } = await requirePermission("users.manage");
+  const { school, session } = await requirePermission("users.manage");
 
   const data = await withTenant(school.id, async (tx) => {
     const staff = await tx
@@ -83,7 +84,7 @@ export default async function PeoplePage() {
 
       {data.pending.filter((i) => !i.acceptedAt).length > 0 && (
         <Section title="Invites not yet accepted" flush>
-          <Table head={["Name", "Email", "Role", "Link"]}>
+          <Table head={["Name", "Email", "Role", "Link to send them"]} minWidth={720}>
             {data.pending
               .filter((i) => !i.acceptedAt)
               .map((i) => (
@@ -93,7 +94,7 @@ export default async function PeoplePage() {
                   <td>{ROLE_LABELS[i.role as never] ?? i.role}</td>
                   <td>
                     <a className="brand-text underline" href={`/invite/${i.token}`}>
-                      /invite/{i.token.slice(0, 8)}…
+                      /invite/{i.token}
                     </a>
                   </td>
                 </tr>
@@ -125,6 +126,7 @@ export default async function PeoplePage() {
           ))}
         </Table>
       </Section>
+      <ExportPanel dataset="staff" roles={session.roles} />
     </>
   );
 }

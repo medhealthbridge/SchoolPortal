@@ -20,6 +20,7 @@ import {
 } from "@/components/ui";
 import { prettyDate, todayIso } from "@/lib/format";
 import { addOffenseLevel, issueSanction, reportIncident } from "./actions";
+import { ExportPanel } from "@/components/export-panel";
 
 export const metadata = { title: "Discipline" };
 
@@ -247,6 +248,7 @@ export default async function DisciplinePage() {
       <p className="text-muted">
         <Meta items={["Every view of this page is logged", "Teachers see only their own reports"]} />
       </p>
+      <ExportPanel dataset="incidents" roles={session.roles} />
     </>
   );
 }

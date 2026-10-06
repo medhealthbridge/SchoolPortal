@@ -21,6 +21,7 @@ import {
   type Counts,
 } from "@/components/ui";
 import { DownloadIcon } from "@/components/icons";
+import { ExportPanel } from "@/components/export-panel";
 
 export const metadata = { title: "Attendance report" };
 
@@ -29,7 +30,7 @@ export default async function ReportPage({
 }: {
   searchParams: Promise<{ month?: string; section?: string }>;
 }) {
-  const { school } = await requirePermission("attendance.view_all");
+  const { school, session } = await requirePermission("attendance.view_all");
   const sp = await searchParams;
   const month = sp.month ?? monthKey();
   const sectionId = sp.section || undefined;
@@ -168,6 +169,7 @@ export default async function ReportPage({
           </Table>
         )}
       </Section>
+      <ExportPanel dataset="attendance" roles={session.roles} />
     </>
   );
 }

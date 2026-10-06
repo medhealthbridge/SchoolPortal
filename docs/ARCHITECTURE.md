@@ -145,7 +145,29 @@ Every school page is served through a middleware rewrite, which makes a
 relative `redirect()` from a server action render the wrong tree. Actions
 therefore **return `{ goTo }` and the client calls `window.location.assign()`**
 (`src/lib/nav.ts`). An absolute URL does not fix it; returning the
-destination does.
+destination does. Redirecting to the page you are already on fails the same
+way (the follow-up GET 404s), so an action that stays put just returns and
+calls `revalidatePath` for the page it changed, detail pages included.
+
+---
+
+## Downloads and templates
+
+Every module's file download goes through one route,
+`/export/[dataset]` (`src/app/s/(app)/export/[dataset]/route.ts`). A dataset in
+`src/lib/export/datasets.ts` names its columns, the permission needed to take
+it, and a query. A column may be `restricted`, which needs a second permission
+(`students.manage` for learner details); the route drops restricted and unknown
+columns itself, so the checkboxes on the page only choose and never protect.
+Every download writes `export.downloaded` to the audit log.
+
+The writers in `src/lib/export/files.ts` have no native dependencies: Excel is
+a zip of five XML parts built with `fflate`, PDF is `pdf-lib` with the built-in
+Helvetica (Latin-1; anything else prints as `?`), CSV carries a byte-order mark
+so Excel reads it as UTF-8 and prefixes cells that start with `=` or `@` so a
+typed formula cannot run. To offer a new download, add a dataset and put
+`<ExportPanel dataset="…" roles={session.roles} />` on the page; nothing else
+changes.
 
 ---
 
@@ -230,7 +252,7 @@ a screen looks colourful, something is wrong.
 ## Testing
 
 ```bash
-npm test     # 142 tests against a real Postgres, single fork
+npm test     # 167 tests against a real Postgres, single fork
 ```
 
 | File | Holds |

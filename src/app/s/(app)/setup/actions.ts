@@ -6,22 +6,19 @@ import { withTenant } from "@/db";
 import { schools } from "@/db/schema";
 import {
   branches,
-  enrollments,
   invites,
   rooms,
   schoolYears,
   seatPlans,
   sections,
-  students,
   subjects,
   timetableSlots,
   userRoles,
   users,
 } from "@/db/schema";
 import { requirePermission } from "@/lib/guard";
-import { activationCode, hashPassword } from "@/lib/password";
-import { audit, emit } from "@/lib/audit";
-import { readSheet } from "@/lib/csv";
+import { hashPassword } from "@/lib/password";
+import { audit } from "@/lib/audit";
 import { deliver } from "@/lib/messaging";
 import { randomBytes } from "node:crypto";
 import type { Role } from "@/lib/roles";
@@ -233,93 +230,6 @@ export async function saveSeatPlan(
   return { ok: "Seat plan saved." };
 }
 
-export async function importStudents(_prev: ActionResult, form: FormData): Promise<ActionResult> {
-  const { school, session } = await requirePermission("students.manage");
-  const file = form.get("file");
-  if (!(file instanceof File) || file.size === 0) return { error: "Choose a CSV file." };
-
-  const text = await file.text();
-  const { records, issues } = readSheet(text, ["student_number", "first_name", "last_name"]);
-  const problems = issues.map((i) => `Line ${i.line}: ${i.message}`);
-
-  const seen = new Set<string>();
-  for (const r of records) {
-    const line = r.__line;
-    if (!r.student_number) problems.push(`Line ${line}: missing student_number.`);
-    if (!r.first_name || !r.last_name) problems.push(`Line ${line}: missing a name.`);
-    if (r.student_number && seen.has(r.student_number))
-      problems.push(`Line ${line}: student_number ${r.student_number} appears twice.`);
-    if (r.student_number) seen.add(r.student_number);
-  }
-
-  // "Errors are shown before anything is saved."
-  if (problems.length > 0) return { error: "Nothing was saved.", issues: problems.slice(0, 25) };
-
-  const inserted = await withTenant(school.id, async (tx) => {
-    const [year] = await tx
-      .select()
-      .from(schoolYears)
-      .where(and(eq(schoolYears.schoolId, school.id), eq(schoolYears.isCurrent, true)))
-      .limit(1);
-    const sectionRows = await tx
-      .select()
-      .from(sections)
-      .where(eq(sections.schoolId, school.id));
-    const sectionByName = new Map(
-      sectionRows.map((s) => [`${s.level} ${s.name}`.toLowerCase(), s]),
-    );
-
-    let count = 0;
-    for (const r of records) {
-      const [student] = await tx
-        .insert(students)
-        .values({
-          schoolId: school.id,
-          studentNumber: r.student_number,
-          firstName: r.first_name,
-          lastName: r.last_name,
-          activationCode: activationCode(),
-          parentCode: activationCode(),
-        })
-        .onConflictDoNothing()
-        .returning();
-      if (!student) continue;
-      count += 1;
-
-      const sectionLabel = (r.section ?? "").toLowerCase();
-      const section = sectionByName.get(sectionLabel);
-      if (section && year) {
-        await tx
-          .insert(enrollments)
-          .values({
-            schoolId: school.id,
-            studentId: student.id,
-            sectionId: section.id,
-            schoolYearId: year.id,
-          })
-          .onConflictDoNothing();
-        await emit(tx, school.id, "student.enrolled", {
-          studentId: student.id,
-          sectionId: section.id,
-        });
-      }
-    }
-
-    await audit(tx, {
-      schoolId: school.id,
-      actorUserId: session.userId,
-      actorLabel: session.name,
-      action: "students.imported",
-      after: { count },
-    });
-    return count;
-  });
-
-  revalidatePath("/setup");
-  revalidatePath("/students");
-  return { ok: `${inserted} students imported. Print their activation codes from Students.` };
-}
-
 export async function inviteStaff(_prev: ActionResult, form: FormData): Promise<ActionResult> {
   const { school, session } = await requirePermission("users.manage");
   const email = String(form.get("email") ?? "").trim().toLowerCase();
@@ -350,7 +260,9 @@ export async function inviteStaff(_prev: ActionResult, form: FormData): Promise<
   });
 
   revalidatePath("/people");
-  return { ok: `Invite sent to ${email}.` };
+  return {
+    ok: `Invite created for ${email}. We email it if this site can send mail; if not, copy the link from “Invites not yet accepted” below and send it yourself.`,
+  };
 }
 
 export async function acceptInvite(token: string, name: string, password: string) {

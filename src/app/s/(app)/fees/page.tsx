@@ -21,11 +21,12 @@ import {
   Table,
 } from "@/components/ui";
 import { addFeeItem, chargeFeeAction, recordStudentPayment } from "./actions";
+import { ExportPanel } from "@/components/export-panel";
 
 export const metadata = { title: "School fees" };
 
 export default async function FeesPage() {
-  const { school } = await requirePermission("fees.manage");
+  const { school, session } = await requirePermission("fees.manage");
 
   const data = await withTenant(school.id, async (tx) => {
     const [year] = await tx
@@ -182,6 +183,8 @@ export default async function FeesPage() {
           </Table>
         </Section>
       )}
+      <ExportPanel dataset="charges" roles={session.roles} />
+      <ExportPanel dataset="payments" roles={session.roles} />
     </>
   );
 }

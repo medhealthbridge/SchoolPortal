@@ -3,11 +3,12 @@ import { withTenant } from "@/db";
 import { auditLog } from "@/db/schema";
 import { requirePermission } from "@/lib/guard";
 import { EmptyState, PageHeader, Section, Table } from "@/components/ui";
+import { ExportPanel } from "@/components/export-panel";
 
 export const metadata = { title: "Audit log" };
 
 export default async function AuditPage() {
-  const { school } = await requirePermission("audit.view");
+  const { school, session } = await requirePermission("audit.view");
   const rows = await withTenant(school.id, (tx) =>
     tx
       .select()
@@ -46,6 +47,7 @@ export default async function AuditPage() {
       </Table>
       )}
       </Section>
+      <ExportPanel dataset="audit" roles={session.roles} />
     </>
   );
 }

@@ -31,7 +31,6 @@ import {
   addSubject,
   addTimetableSlot,
   createSchoolYear,
-  importStudents,
   saveLogo,
   saveProfile,
 } from "./actions";
@@ -44,6 +43,7 @@ export default async function SetupPage() {
   // The registrar may build the timetable but may not rename the school, and a
   // form whose save button is refused is worse than no form.
   const mayEditSchool = can(session.roles, "school.manage");
+  const mayManageStudents = can(session.roles, "students.manage");
 
   const data = await withTenant(school.id, async (tx) => {
     const [year] = await tx
@@ -110,7 +110,7 @@ export default async function SetupPage() {
     {
       label: "Import your students",
       done: Number(data.studentCount ?? 0) > 0,
-      href: "#import",
+      href: "/students",
     },
     { label: "Build the timetable", done: data.slots.length > 0, href: "#timetable" },
     {
@@ -350,23 +350,17 @@ export default async function SetupPage() {
 
         <Section
           id="import"
-          title="Import students"
-          subtitle="CSV columns: student_number, first_name, last_name, section"
+          title="Students"
+          subtitle="The registrar keeps student records: adding, editing and importing them."
         >
-          <ActionForm action={importStudents} submitLabel="Import" className="grid gap-3">
-            <Field label="CSV file" hint="Errors are shown before anything is saved.">
-              <input
-                type="file"
-                name="file"
-                accept=".csv,text/csv"
-                required
-                className="block w-full max-w-full text-sm"
-              />
-            </Field>
-          </ActionForm>
-          <p className="mt-3 text-xs text-muted">
-            {Number(data.studentCount ?? 0)} students on file. Each import generates
-            an activation code and a separate parent code per student.
+          <p className="text-sm">
+            {Number(data.studentCount ?? 0)} students on file.{" "}
+            <Link href="/students" className="font-medium underline underline-offset-2">
+              Open Students
+            </Link>
+            {mayManageStudents
+              ? " to add or import them."
+              : " to see them. To add students, give the registrar role to whoever keeps your records, from People."}
           </p>
         </Section>
       </div>

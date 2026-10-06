@@ -26,6 +26,7 @@ import {
   Table,
 } from "@/components/ui";
 import { addGradingPeriod, closeGradingPeriod } from "./actions";
+import { ExportPanel } from "@/components/export-panel";
 
 export const metadata = { title: "Grades" };
 
@@ -197,6 +198,7 @@ export default async function GradesPage() {
           </Section>
         </>
       )}
+      <ExportPanel dataset="grades" roles={session.roles} />
     </>
   );
 }

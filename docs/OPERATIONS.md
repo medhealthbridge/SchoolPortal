@@ -180,6 +180,9 @@ role who can sign in at `https://<subdomain>.<ROOT_DOMAIN>/login`.
 - **All four or none.** Setting some and not others stops the deploy and names
   what is missing; a deploy that quietly skipped half of what was asked for is
   worse than one that stops.
+- **The owner cannot edit students.** Student records belong to the registrar
+  role alone. After the first sign-in, invite a registrar from **People** (or
+  give the owner that role too if one person does both jobs).
 - **Safe on every deploy.** If the subdomain exists it does nothing, so the
   variables can stay or be removed afterwards.
 - **To add more schools** before email is configured, change the subdomain and
@@ -497,7 +500,7 @@ Test a restore before you need one.
 
 ```bash
 npm run typecheck
-npm test                 # 142 tests, including the cross-tenant isolation gate
+npm test                 # 167 tests, including the cross-tenant isolation gate
 npm run build
 npm run responsive       # needs the dev server and a seeded database
 npm run smoke            # same
