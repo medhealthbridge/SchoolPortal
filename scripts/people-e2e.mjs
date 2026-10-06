@@ -166,7 +166,6 @@ await par.getByRole("button", { name: "Create my account" }).click();
 await par.waitForURL(`${base}/`, { timeout: 30_000 }).catch(() => {});
 await par.waitForLoadState("networkidle");
 const home = await text(par);
-if (process.env.DEBUG) console.log("PARENT URL", par.url(), "\n", home.slice(0, 1500));
 check(home.includes(`Miguel Santos${stamp}`) && home.includes("Grade 8 Rizal"), "the parent lands on Today with Miguel's card");
 check(home.includes(`Liza Ramos ${stamp}`), "…which names the adviser");
 
@@ -223,6 +222,7 @@ check((await text(stranger)).includes("2 linked to this account"), "My children 
 const code = sh(`npx tsx scripts/e2e-helper.ts parent-code ST-2026-0002`);
 const thief = await as(null, 390);
 await go(thief, "/signup");
+await thief.getByRole("button", { name: "I am a parent" }).click();
 await thief.locator('input[name="studentNumber"]').last().fill("ST-2026-0002");
 await thief.locator('input[name="code"]').last().fill(code);
 await thief.locator('input[name="name"]').last().fill("Not Ana");
@@ -250,7 +250,7 @@ check(!overflow, "no sideways scroll on Teachers at 390px");
 await go(reg, "/teachers");
 const row = reg.locator("tr", { hasText: `Liza Ramos ${stamp}` });
 await row.getByRole("button", { name: "Turn off" }).click();
-await reg.waitForLoadState("networkidle");
+await row.getByRole("button", { name: "Turn back on" }).waitFor({ timeout: 20_000 });
 await go(t, "/schedule");
 check(t.url().includes("/login"), "a turned-off teacher is signed out at once");
 
