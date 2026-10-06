@@ -71,23 +71,25 @@ export default async function ReportPage({
           />
         }
         actions={
-          <span className="flex flex-wrap gap-2">
-            <LinkButton href={`/attendance/sf2?${query}`} variant="secondary">
-              SF2 daily sheet
+          rows.length > 0 ? (
+            <LinkButton
+              href={`/api/attendance/report.csv?${query}`}
+              variant="secondary"
+              prefetch={false}
+            >
+              <DownloadIcon />
+              Export this month
             </LinkButton>
-            {rows.length > 0 && (
-              <LinkButton
-                href={`/api/attendance/report.csv?${query}`}
-                variant="secondary"
-                prefetch={false}
-              >
-                <DownloadIcon />
-                Export this month
-              </LinkButton>
-            )}
-          </span>
+          ) : null
         }
       />
+      <p className="-mt-2 text-sm text-muted">
+        For the DepEd form, open the{" "}
+        <Link href={`/attendance/sf2?${query}`} className="font-medium text-ink underline underline-offset-2">
+          SF2 daily attendance sheet
+        </Link>
+        .
+      </p>
 
       {marks > 0 && (
         <StatGrid>
