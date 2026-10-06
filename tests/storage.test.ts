@@ -149,3 +149,83 @@ describe("the S3 driver", () => {
     await expect(put("schools/a1", png, "image/png", "png")).rejects.toThrow(/403/);
   });
 });
+
+describe("the database driver", () => {
+  const made: string[] = [];
+  afterEach(async () => {
+    delete process.env.STORAGE_DRIVER;
+    vi.unstubAllEnvs();
+    const { dropSchool } = await import("./helpers");
+    for (const id of made.splice(0)) await dropSchool(id);
+  });
+
+  it("is what production uses when there is no bucket, and a bucket still wins", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    expect(storageDriver()).toBe("database");
+    vi.stubEnv("STORAGE_DRIVER", "local");
+    expect(storageDriver()).toBe("local");
+    vi.stubEnv("STORAGE_DRIVER", "");
+    vi.stubEnv("S3_BUCKET", "b");
+    vi.stubEnv("S3_ACCESS_KEY_ID", "k");
+    expect(storageDriver()).toBe("s3");
+  });
+
+  it("keeps a logo in Postgres, serves it with its own type, and deletes it", async () => {
+    const { makeSchool } = await import("./helpers");
+    const { GET } = await import("../src/app/uploads/[...key]/route");
+    const { withPlatform } = await import("@/db");
+    const { storedFiles } = await import("@/db/schema");
+    const { eq } = await import("drizzle-orm");
+
+    const t = await makeSchool();
+    made.push(t.school.id);
+    process.env.STORAGE_DRIVER = "database";
+
+    const stored = await put(`schools/${t.school.id}`, png, "image/png", "png");
+    expect(stored.url).toBe(`/uploads/${stored.key}`);
+    expect(keyFromUrl(stored.url)).toBe(stored.key);
+
+    const res = await GET(new Request(`http://x${stored.url}`), {
+      params: Promise.resolve({ key: stored.key.split("/") }),
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("image/png");
+    expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(Buffer.from(await res.arrayBuffer()).equals(png)).toBe(true);
+
+    await remove(stored.key);
+    const rows = await withPlatform((tx) =>
+      tx.select().from(storedFiles).where(eq(storedFiles.key, stored.key)),
+    );
+    expect(rows).toEqual([]);
+    const gone = await GET(new Request(`http://x${stored.url}`), {
+      params: Promise.resolve({ key: stored.key.split("/") }),
+    });
+    expect(gone.status).toBe(404);
+  });
+
+  it("refuses a key that is not a school's, and a path that climbs out", async () => {
+    process.env.STORAGE_DRIVER = "database";
+    await expect(put("schools/test", png, "image/png", "png")).rejects.toThrow();
+    const { GET } = await import("../src/app/uploads/[...key]/route");
+    const res = await GET(new Request("http://x/uploads/../../etc/passwd"), {
+      params: Promise.resolve({ key: ["..", "..", "etc", "passwd"] }),
+    });
+    expect(res.status).toBe(404);
+  });
+
+  it("goes with the school when the school is deleted", async () => {
+    const { makeSchool, dropSchool } = await import("./helpers");
+    const { withPlatform } = await import("@/db");
+    const { storedFiles } = await import("@/db/schema");
+    const { eq } = await import("drizzle-orm");
+    const t = await makeSchool();
+    process.env.STORAGE_DRIVER = "database";
+    const stored = await put(`schools/${t.school.id}`, png, "image/png", "png");
+    await dropSchool(t.school.id);
+    const rows = await withPlatform((tx) =>
+      tx.select().from(storedFiles).where(eq(storedFiles.key, stored.key)),
+    );
+    expect(rows).toEqual([]);
+  });
+});

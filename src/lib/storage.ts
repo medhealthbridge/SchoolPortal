@@ -5,12 +5,17 @@ import { dirname, join } from "node:path";
 /**
  * Where a school's logo and any other uploaded file lives.
  *
- * Two drivers, chosen by whether S3 is configured:
+ * Three drivers:
  *
- *   local — writes under .uploads/ and serves from /uploads/<key>. No account
- *           needed, so `npm run dev` works the minute it is cloned. The files
- *           are on one machine's disk, which is wrong for more than one
- *           instance, so production says so on boot.
+ *   s3       — any S3-compatible bucket (below), when S3_BUCKET is set.
+ *   database — a row in Postgres, served from /uploads/<key>. The default in
+ *              production without a bucket: a logo is a few kilobytes, the
+ *              database is already shared by every instance and backed up,
+ *              and a serverless host has no disk to write to.
+ *   local    — writes under .uploads/ and serves from /uploads/<key>. No
+ *              account needed, so `npm run dev` works the minute it is
+ *              cloned. In production only with STORAGE_DRIVER=local, for one
+ *              machine with a persistent volume.
  *   s3    — any S3-compatible bucket: AWS, Cloudflare R2, DigitalOcean Spaces,
  *           MinIO, Wasabi. Signed here rather than through a dependency,
  *           because one PUT is a hundred lines and an SDK is twelve megabytes.
@@ -52,9 +57,15 @@ export async function checkImage(file: File, maxBytes = MAX_UPLOAD_BYTES): Promi
 
 const mb = (n: number) => `${(n / 1024 / 1024).toFixed(1)} MB`;
 
-export function storageDriver(): "s3" | "local" {
-  return process.env.S3_BUCKET && process.env.S3_ACCESS_KEY_ID ? "s3" : "local";
+export function storageDriver(): "s3" | "database" | "local" {
+  if (process.env.S3_BUCKET && process.env.S3_ACCESS_KEY_ID) return "s3";
+  const asked = process.env.STORAGE_DRIVER;
+  if (asked === "database" || asked === "local") return asked;
+  return process.env.NODE_ENV === "production" ? "database" : "local";
 }
+
+/** `schools/<school id>/<file>`: whose file a key is, for the database driver. */
+const SCHOOL_KEY = /^schools\/([0-9a-f-]{36})\/[0-9a-f-]{36}\.\w{3,4}$/;
 
 /** `prefix` groups a school's files, so deleting a school can sweep them. */
 export async function put(
@@ -66,7 +77,18 @@ export async function put(
   // A fresh name every time: a logo replaced under its old name would stay
   // stale in every browser and CDN that had already cached it.
   const key = `${prefix}/${randomUUID()}.${ext}`;
-  if (storageDriver() === "s3") return putToS3(key, bytes, contentType);
+  const driver = storageDriver();
+  if (driver === "s3") return putToS3(key, bytes, contentType);
+  if (driver === "database") {
+    const owner = SCHOOL_KEY.exec(key)?.[1];
+    if (!owner) throw new Error(`The database driver stores a school's files, not "${prefix}".`);
+    const { withPlatform } = await import("@/db");
+    const { storedFiles } = await import("@/db/schema");
+    await withPlatform((tx) =>
+      tx.insert(storedFiles).values({ key, schoolId: owner, contentType, data: bytes }),
+    );
+    return { key, url: `/uploads/${key}` };
+  }
 
   const path = join(process.cwd(), ".uploads", key);
   await mkdir(dirname(path), { recursive: true });
@@ -75,8 +97,16 @@ export async function put(
 }
 
 export async function remove(key: string) {
-  if (storageDriver() === "s3") {
+  const driver = storageDriver();
+  if (driver === "s3") {
     await s3Request("DELETE", key, Buffer.alloc(0), "application/octet-stream");
+    return;
+  }
+  if (driver === "database") {
+    const { withPlatform } = await import("@/db");
+    const { storedFiles } = await import("@/db/schema");
+    const { eq } = await import("drizzle-orm");
+    await withPlatform((tx) => tx.delete(storedFiles).where(eq(storedFiles.key, key)));
     return;
   }
   await unlink(join(process.cwd(), ".uploads", key)).catch(() => {});

@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button, Callout, Field, Input, Panel, Section, Select } from "@/components/ui";
 import { MODULES } from "@/lib/modules";
+import { roleAddress, suggestSubdomain } from "@/lib/slug";
 import { TIER_LIST, peso } from "@/lib/pricing";
 import {
   checkSubdomain,
@@ -40,6 +41,10 @@ export default function RegisterWizard() {
 
   // Step 2
   const [subdomain, setSubdomain] = useState("");
+  // Until the person edits the address themselves, it follows the school name.
+  const [addressEdited, setAddressEdited] = useState(false);
+  const suggested = suggestSubdomain(schoolName);
+  const root = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "yourapp.com";
   const [availability, setAvailability] = useState<{
     available: boolean;
     reason: string | null;
@@ -48,13 +53,30 @@ export default function RegisterWizard() {
   // Step 3
   const [type, setType] = useState<"k12" | "senior_high" | "college">("k12");
   const [branchNames, setBranchNames] = useState<string[]>(["Main campus"]);
+  const [logo, setLogo] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
   // Step 4
   const [tier, setTier] = useState<TierKey>(
     (params.get("tier") as TierKey) ?? "starter",
   );
 
-  const [done, setDone] = useState<{ url: string; subdomain: string } | null>(null);
+  const [done, setDone] = useState<{
+    url: string;
+    subdomain: string;
+    logoNote?: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!addressEdited) setSubdomain(suggested);
+  }, [suggested, addressEdited]);
+
+  useEffect(() => {
+    if (!logo) return setLogoPreview(null);
+    const url = URL.createObjectURL(logo);
+    setLogoPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [logo]);
 
   // Availability is checked live, as the spec asks, with a short debounce.
   useEffect(() => {
@@ -79,6 +101,12 @@ export default function RegisterWizard() {
           . Sign in with {ownerEmail} to finish setup: school year and sections,
           students and staff, the timetable, invites, and the go-live checklist.
         </p>
+        {done.logoNote && (
+          <p className="mt-3 text-sm text-muted">
+            Your logo was not saved: {done.logoNote} You can add it later in Setup, under
+            School profile.
+          </p>
+        )}
       </Section>
     );
   }
@@ -222,14 +250,29 @@ export default function RegisterWizard() {
             <div className="flex items-center gap-2">
               <Input
                 value={subdomain}
-                placeholder="stmary"
-                onChange={(e) => setSubdomain(e.target.value.toLowerCase())}
+                placeholder={suggested || "your-school"}
+                onChange={(e) => {
+                  setAddressEdited(true);
+                  setSubdomain(e.target.value.toLowerCase());
+                }}
               />
-              <span className="shrink-0 text-sm text-muted">
-                .{process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "yourapp.com"}
-              </span>
+              <span className="shrink-0 text-sm text-muted">.{root}</span>
             </div>
           </Field>
+          <p className="mt-2 text-sm text-muted">
+            {suggested && !addressEdited
+              ? `Made from “${schoolName.trim()}”. Change it if you like. `
+              : ""}
+            Staff will sign in at{" "}
+            <span className="font-medium text-ink">
+              {subdomain || suggested || "your-school"}.{root}
+            </span>
+            , with addresses like{" "}
+            <span className="font-medium text-ink">
+              {roleAddress("teacher", subdomain || suggested || "your-school", root)}
+            </span>
+            .
+          </p>
           {availability && (
             <p
               className={`mt-2 text-sm ${availability.available ? "text-[#1f7a4d]" : "text-[#b3261e]"}`}
@@ -268,6 +311,28 @@ export default function RegisterWizard() {
                 value={branchNames.join("\n")}
                 onChange={(e) => setBranchNames(e.target.value.split("\n"))}
               />
+            </Field>
+            <Field
+              label="School logo (optional)"
+              hint="PNG, JPEG or WebP, up to 2 MB. It shows in the corner of every screen. You can add or change it later in Setup."
+            >
+              <div className="flex items-center gap-4">
+                {logoPreview && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={logoPreview}
+                    alt="Your logo"
+                    className="size-14 shrink-0 rounded-control border border-line object-contain"
+                  />
+                )}
+                <input
+                  type="file"
+                  name="logo"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="block w-full max-w-full text-sm"
+                  onChange={(e) => setLogo(e.target.files?.[0] ?? null)}
+                />
+              </div>
             </Field>
           </div>
           <div className="mt-5 flex gap-2">
@@ -321,19 +386,24 @@ export default function RegisterWizard() {
               disabled={pending}
               onClick={() =>
                 startTransition(async () => {
-                  const res = await registerSchool({
-                    schoolName,
-                    ownerName,
-                    ownerEmail,
-                    ownerMobile,
-                    password,
-                    subdomain,
-                    type,
-                    branchNames: branchNames.map((b) => b.trim()).filter(Boolean),
-                    tier,
-                  });
+                  const logoForm = new FormData();
+                  if (logo) logoForm.set("logo", logo);
+                  const res = await registerSchool(
+                    {
+                      schoolName,
+                      ownerName,
+                      ownerEmail,
+                      ownerMobile,
+                      password,
+                      subdomain,
+                      type,
+                      branchNames: branchNames.map((b) => b.trim()).filter(Boolean),
+                      tier,
+                    },
+                    logoForm,
+                  );
                   if (!res.ok) return setError(res.error);
-                  setDone({ url: res.url, subdomain: res.subdomain });
+                  setDone({ url: res.url, subdomain: res.subdomain, logoNote: res.logoNote });
                 })
               }
             >

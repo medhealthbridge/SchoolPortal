@@ -107,3 +107,32 @@ describe("roles", () => {
     expect(can(["parent"], "students.view")).toBe(false);
   });
 });
+
+describe("addresses made from the school's name", () => {
+  it("turns a name into an address", async () => {
+    const { suggestSubdomain } = await import("@/lib/slug");
+    expect(suggestSubdomain("St. Mary's Academy")).toBe("st-marys-academy");
+    expect(suggestSubdomain("  Colegio de San José  ")).toBe("colegio-de-san-jose");
+    expect(suggestSubdomain("Holy Child — Main #2")).toBe("holy-child-main-2");
+    expect(suggestSubdomain("???")).toBe("");
+  });
+
+  it("never runs past the limit or ends in a hyphen", async () => {
+    const { suggestSubdomain } = await import("@/lib/slug");
+    const { subdomainProblem } = await import("@/lib/tenant");
+    const long = suggestSubdomain("The Very Long Named Institute of Science and Technology and the Arts of Mindanao");
+    expect(long.length).toBeLessThanOrEqual(40);
+    expect(long.endsWith("-")).toBe(false);
+    expect(subdomainProblem(long)).toBeNull();
+  });
+
+  it("builds a role's address at the school", async () => {
+    const { roleAddress } = await import("@/lib/slug");
+    expect(roleAddress("teacher", "st-marys", "schoolportal.example.com")).toBe(
+      "teacher@st-marys.schoolportal.example.com",
+    );
+    expect(roleAddress("guidance_counselor", "demo", "lvh.me:3000")).toBe(
+      "guidance-counselor@demo.lvh.me",
+    );
+  });
+});

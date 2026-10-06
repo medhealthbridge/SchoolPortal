@@ -198,9 +198,10 @@ address on the internet, `yourschool.<domain>`, cannot be changed here.** Every
 link the school has ever sent points at it; ask the platform admin if it truly
 must change.
 
-**Setup → Logo.** A PNG, JPEG or WebP up to 2 MB; square reads best. It
-replaces your initials in the corner of every screen, and once it is there the
-brand colour shows only on the sign-in page. SVG is refused on purpose — it is
+**Logo.** Optional when you register (the last step before you pick a tier
+asks for it) and changeable any time under **Setup → Logo**. A PNG, JPEG or
+WebP up to 2 MB; square reads best. It replaces your initials in the corner of
+every screen and appears on your school's sign-in page. SVG is refused on purpose — it is
 a file that can carry code, and a logo is not worth the risk.
 
 ### Switching modules on and off

@@ -27,7 +27,7 @@ export function FindSchool() {
     event.preventDefault();
     const school = schoolFrom(value, ROOT);
     if (!school) {
-      setError(`That is not a school address. It is the part before .${ROOT.split(":")[0]}, like stmary.`);
+      setError(`That is not a school address. It is the part before .${ROOT.split(":")[0]}, like your-school.`);
       return;
     }
     const protocol = ROOT.includes("lvh.me") || ROOT.startsWith("localhost") ? "http" : "https";
@@ -55,7 +55,7 @@ export function FindSchool() {
           autoCorrect="off"
           spellCheck={false}
           inputMode="url"
-          placeholder="stmary"
+          placeholder="your-school"
           required
         />
       </Field>

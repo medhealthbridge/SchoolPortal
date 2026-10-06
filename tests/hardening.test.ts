@@ -69,7 +69,6 @@ describe("configuration check", () => {
     ROOT_DOMAIN: "school.example",
     PLATFORM_ADMIN_PASSWORD: "a-long-enough-password",
     APP_USER_PASSWORD: "a-long-enough-role-password",
-    ALLOW_LOCAL_UPLOADS: "yes",
   };
 
   it("passes a sound configuration", () => {
@@ -102,11 +101,9 @@ describe("configuration check", () => {
     ).toContain("APP_USER_PASSWORD");
   });
 
-  it("objects to local uploads unless someone has said that is intended", () => {
-    const { ALLOW_LOCAL_UPLOADS: _off, ...without } = good;
-    expect(configProblems(without).map((p) => p.key)).toContain("S3_BUCKET");
-    const s3 = { ...without, S3_BUCKET: "b", S3_ACCESS_KEY_ID: "k" };
-    expect(configProblems(s3)).toEqual([]);
+  it("does not need a bucket: with none, logos are kept in the database", () => {
+    expect(configProblems(good)).toEqual([]);
+    expect(configProblems({ ...good, S3_BUCKET: "b", S3_ACCESS_KEY_ID: "k" })).toEqual([]);
   });
 
   it("catches a half-configured provider, which would send nothing", () => {

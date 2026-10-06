@@ -4,9 +4,8 @@ import { withTenant } from "@/db";
 import { invites, userRoles, users } from "@/db/schema";
 import { requirePermission } from "@/lib/guard";
 import { ROLE_LABELS, ROLE_SCOPES, STAFF_ROLES } from "@/lib/roles";
-import { ActionForm } from "@/components/action-form";
-import { Field, Input, PageHeader, Pill, Section, Select, Table } from "@/components/ui";
-import { inviteStaff } from "../setup/actions";
+import { PageHeader, Pill, Section, Table } from "@/components/ui";
+import { InviteForm } from "./invite-form";
 import { ExportPanel } from "@/components/export-panel";
 
 export const metadata = { title: "People" };
@@ -47,23 +46,7 @@ export default async function PeoplePage() {
         title="Invite staff"
         subtitle="Staff accounts are invite-only. There is no public staff signup."
       >
-        <ActionForm action={inviteStaff} submitLabel="Send invite" className="grid gap-3 sm:grid-cols-3">
-          <Field label="Name">
-            <Input name="name" required />
-          </Field>
-          <Field label="Email">
-            <Input name="email" type="email" required />
-          </Field>
-          <Field label="Role">
-            <Select name="role" required defaultValue="teacher">
-              {STAFF_ROLES.map((r) => (
-                <option key={r} value={r}>
-                  {ROLE_LABELS[r]}
-                </option>
-              ))}
-            </Select>
-          </Field>
-        </ActionForm>
+        <InviteForm subdomain={school.subdomain} root={process.env.ROOT_DOMAIN ?? "lvh.me:3000"} />
       </Section>
 
       <Section title="Accounts" subtitle="Staff are invited; students and parents claim their own." flush>

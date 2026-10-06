@@ -93,7 +93,6 @@ ones that matter most:
 | `ROOT_DOMAIN` | yes | The domain schools get a subdomain of. No scheme. |
 | `NEXT_PUBLIC_ROOT_DOMAIN` | yes | The same value, for the browser. |
 | `PLATFORM_ADMIN_EMAIL` / `_PASSWORD` | on first seed | Seeds the platform admin. |
-| `ALLOW_LOCAL_UPLOADS` | unless S3 is set | Acknowledges that uploads go to local disk. |
 | `CRON_SECRET` | for the runner | Without it the endpoint refuses every caller. |
 
 ### The boot check
@@ -115,7 +114,6 @@ It refuses to start when:
   reaches every school's rows, and on a managed Postgres its endpoint is
   reachable from the internet.
 - A provider is half-configured — a key with no URL would send nothing.
-- Uploads would go to local disk without `ALLOW_LOCAL_UPLOADS=yes`.
 
 ---
 
@@ -162,7 +160,6 @@ Set these as Production environment variables, marking the secrets
 | `PLATFORM_ADMIN_EMAIL`, `PLATFORM_ADMIN_PASSWORD` | Read only by `db:bootstrap`, and only when no admin exists |
 | `BOOTSTRAP_SCHOOL_SUBDOMAIN`, `BOOTSTRAP_SCHOOL_NAME`, `BOOTSTRAP_OWNER_EMAIL`, `BOOTSTRAP_OWNER_PASSWORD` | Optional, **all four or none**: creates a first school and its owner, once. See below |
 | `CRON_SECRET` | Vercel sends it to the cron endpoint automatically |
-| `ALLOW_LOCAL_UPLOADS` | `yes` — and see below |
 
 ### The first school
 
@@ -188,10 +185,11 @@ role who can sign in at `https://<subdomain>.<ROOT_DOMAIN>/login`.
 - **To add more schools** before email is configured, change the subdomain and
   deploy again, or set up a mail provider and let schools register themselves.
 
-**Uploads do not work on Vercel until S3 is configured.** The filesystem there
-is read-only, so a logo upload fails with "The file could not be stored".
-`ALLOW_LOCAL_UPLOADS=yes` only lets the app boot. Set the `S3_*` variables
-(Cloudflare R2 is the cheapest) to fix it.
+**Logo uploads work on Vercel with nothing to configure.** The filesystem there
+is read-only, so in production the logo is stored in Postgres instead (table
+`stored_files`) and served from `/uploads/<key>`. Setting the `S3_*` variables
+later moves new uploads to the bucket; logos already saved keep working.
+(`ALLOW_LOCAL_UPLOADS` is no longer read and can be deleted.)
 
 **Vercel Authentication** protects every deployment on a `*.vercel.app` URL,
 so a visitor needs a Vercel login. On the project's Deployment Protection
@@ -378,11 +376,11 @@ than something wrong.
 
 ## Uploaded files
 
-Unset, files go to `.uploads/` on the machine's own disk and are served from
-`/uploads/<key>`. That is right for development and for a single VPS with a
-persistent volume (set `ALLOW_LOCAL_UPLOADS=yes` so production stops
-objecting), and **wrong on a serverless host or behind two instances** — the
-write fails on one, and half the requests 404 on the other.
+With no bucket, files go to `.uploads/` on the machine's own disk in
+development and into Postgres in production, and are served from
+`/uploads/<key>`. `STORAGE_DRIVER=local` forces the disk (right only for a
+single VPS with a persistent volume) and `STORAGE_DRIVER=database` forces the
+database.
 
 Any S3-compatible bucket takes over:
 

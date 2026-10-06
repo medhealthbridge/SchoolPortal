@@ -2,8 +2,9 @@
 
 import { and, eq, gt } from "drizzle-orm";
 import { z } from "zod";
-import { db } from "@/db";
-import { emailVerifications } from "@/db/schema";
+import { db, withPlatform } from "@/db";
+import { emailVerifications, schools } from "@/db/schema";
+import { checkImage, put } from "@/lib/storage";
 import { activationCode, hashPassword } from "@/lib/password";
 import { deliver } from "@/lib/messaging";
 import { subdomainAvailable, subdomainProblem } from "@/lib/tenant";
@@ -92,7 +93,7 @@ const registrationSchema = z.object({
 
 export type RegistrationInput = z.input<typeof registrationSchema>;
 
-export async function registerSchool(input: RegistrationInput) {
+export async function registerSchool(input: RegistrationInput, logoForm?: FormData | null) {
   const parsed = registrationSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false as const, error: parsed.error.issues[0]?.message ?? "Check the form." };
@@ -127,6 +128,26 @@ export async function registerSchool(input: RegistrationInput) {
     action: "school.registered",
   });
 
+  // The logo is optional and never blocks the school: it is saved after the
+  // school exists, and a problem with it is reported, not fatal.
+  let logoNote: string | undefined;
+  const logo = logoForm?.get("logo");
+  if (logo instanceof File && logo.size > 0) {
+    const checked = await checkImage(logo);
+    if (!checked.ok) logoNote = checked.error;
+    else {
+      try {
+        const stored = await put(`schools/${school.id}`, checked.bytes, checked.type, checked.ext);
+        await withPlatform((tx) =>
+          tx.update(schools).set({ logoUrl: stored.url }).where(eq(schools.id, school.id)),
+        );
+      } catch (err) {
+        console.error(err);
+        logoNote = "The logo could not be saved.";
+      }
+    }
+  }
+
   const root = process.env.ROOT_DOMAIN ?? "lvh.me:3000";
   const protocol = root.startsWith("localhost") || root.includes("lvh.me") ? "http" : "https";
 
@@ -142,5 +163,6 @@ export async function registerSchool(input: RegistrationInput) {
     ok: true as const,
     url: `${protocol}://${school.subdomain}.${root}/login`,
     subdomain: school.subdomain,
+    logoNote,
   };
 }

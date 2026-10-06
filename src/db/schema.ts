@@ -1,6 +1,7 @@
 import { relations, sql } from "drizzle-orm";
 import {
   boolean,
+  customType,
   date,
   index,
   integer,
@@ -1020,3 +1021,27 @@ export const registrarRequests = pgTable(
   },
   (t) => [index("registrar_requests_idx").on(t.schoolId, t.status)],
 );
+
+
+/* ------------------------------------------------------------------ *
+ * Uploaded files, when there is no bucket
+ * ------------------------------------------------------------------ */
+
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType: () => "bytea",
+});
+
+/**
+ * A school's logo, kept in Postgres when no S3 bucket is configured. A logo is
+ * a few kilobytes, the database is already backed up and already shared by
+ * every instance, and a serverless host has no disk to write to.
+ */
+export const storedFiles = pgTable("stored_files", {
+  key: text("key").primaryKey(),
+  schoolId: uuid("school_id")
+    .notNull()
+    .references(() => schools.id, { onDelete: "cascade" }),
+  contentType: text("content_type").notNull(),
+  data: bytea("data").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});

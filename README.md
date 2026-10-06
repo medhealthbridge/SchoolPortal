@@ -231,12 +231,13 @@ admin Outbox shows held, sent, and failed with the provider's own reason.
 
 ### Files
 
-A school's logo goes to `.uploads/` on this machine by default, served from
-`/uploads/<key>` — right for dev and for one VPS with a persistent volume, and
-wrong on a serverless host or behind two instances, so production says so
-unless `ALLOW_LOCAL_UPLOADS=yes`. Set the `S3_*` variables and any
-S3-compatible bucket takes over: AWS, Cloudflare R2, Spaces, Wasabi, MinIO.
-The PUT is signed in-process, so there is no SDK to install.
+A school's logo needs no setup. In development it goes to `.uploads/` on this
+machine; in production it is stored in Postgres (table `stored_files`) and
+served from `/uploads/<key>`, which works on a serverless host and behind any
+number of instances. Set the `S3_*` variables and any S3-compatible bucket
+takes over: AWS, Cloudflare R2, Spaces, Wasabi, MinIO. The PUT is signed
+in-process, so there is no SDK to install. `STORAGE_DRIVER=local|database`
+overrides the choice.
 
 Uploads are checked by their own first bytes, not by the name or the
 content-type the browser claimed, and SVG is refused however it is labelled —
