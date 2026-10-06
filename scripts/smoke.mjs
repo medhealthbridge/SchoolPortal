@@ -23,7 +23,7 @@ const log = (m) => { out.push(m); console.log(m); };
 
 // 1. Teacher signs in and takes attendance offline.
 await page.goto(base("stmary.lvh.me", "/login"));
-await page.fill('input[name="identifier"]', "tcruz@stmary.example");
+await page.fill('input[name="identifier"]', "teacher@stmary.databridgesol.space");
 await page.fill('input[name="password"]', "password123");
 await Promise.all([page.waitForURL("**/"), page.click('button[type="submit"]')]);
 log(`login → ${page.url()}  headings: ${(await page.locator("h2").allTextContents()).join(" / ") || "(none — Sunday, no classes)"}`);

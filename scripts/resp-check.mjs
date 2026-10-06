@@ -23,15 +23,15 @@ async function adminSession() {
   return execSync("npx tsx scripts/make-admin-session.ts").toString().trim();
 }
 
-const admin = await session("stmary", "admin@stmary.example");
-const registrar = await session("stmary", "registrar@stmary.example");
-const teacher = await session("stmary", "tcruz@stmary.example");
+const admin = await session("stmary", "admin@stmary.databridgesol.space");
+const registrar = await session("stmary", "registrar@stmary.databridgesol.space");
+const teacher = await session("stmary", "teacher@stmary.databridgesol.space");
 // Each office has its own account; the admin is deliberately locked out of them.
-const officer = await session("stmary", "discipline@stmary.example");
-const counselor = await session("stmary", "guidance@stmary.example");
-const sao = await session("stmary", "sao@stmary.example");
-const chaplain = await session("stmary", "chaplain@stmary.example");
-const cashier = await session("stmary", "cashier@stmary.example");
+const officer = await session("stmary", "discipline@stmary.databridgesol.space");
+const counselor = await session("stmary", "guidance@stmary.databridgesol.space");
+const sao = await session("stmary", "sao@stmary.databridgesol.space");
+const chaplain = await session("stmary", "chaplain@stmary.databridgesol.space");
+const cashier = await session("stmary", "cashier@stmary.databridgesol.space");
 const platform = await adminSession();
 
 const PAGES = [

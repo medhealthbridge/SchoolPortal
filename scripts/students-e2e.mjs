@@ -33,7 +33,7 @@ const stamp = Date.now().toString().slice(-6);
 const lrn = `8${stamp}00000`; // 12 digits, new each run
 
 // --- registrar ---------------------------------------------------------
-const r = await page("registrar@stmary.example");
+const r = await page("registrar@stmary.databridgesol.space");
 await r.goto(`${base}/students`, { waitUntil: "networkidle", timeout: 90_000 });
 check((await body(r)).includes("Add a student"), "registrar sees the add form");
 check((await body(r)).includes("Import from a spreadsheet"), "registrar sees the import form");
@@ -174,7 +174,7 @@ check(!overflow, "no sideways scroll at 390px");
 await r.screenshot({ path: "/tmp/claude-0/students-390.png", fullPage: true });
 
 // --- the school admin: reads, cannot change -----------------------------
-const a = await page("admin@stmary.example");
+const a = await page("admin@stmary.databridgesol.space");
 await a.goto(`${base}/students`, { waitUntil: "networkidle" });
 const at = await body(a);
 check(!at.includes("Add a student") && !at.includes("Import from a spreadsheet"), "admin sees no add or import form");
@@ -190,7 +190,7 @@ await a.goto(`${base}/students/${recordUrl.split("/").pop()}`, { waitUntil: "net
 check(a.url().includes("/students/") && (await body(a)).match(/not found|404/i) !== null, "admin cannot open the record page");
 
 // --- a teacher: reads only, no sensitive fields -------------------------
-const tch = await page("tcruz@stmary.example");
+const tch = await page("teacher@stmary.databridgesol.space");
 await tch.goto(`${base}/students`, { waitUntil: "networkidle" });
 const tt = await body(tch);
 check(!tt.includes("Add a student") && !tt.includes("Islam") && !tt.includes("Activation code"), "teacher sees a plain list");

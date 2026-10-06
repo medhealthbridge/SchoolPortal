@@ -2,7 +2,7 @@
  * Dev helper: mints a session cookie for a user, so flows can be exercised
  * with curl or a headless browser without going through the login form.
  *
- *   npx tsx scripts/make-session.ts stmary tcruz@stmary.example
+ *   npx tsx scripts/make-session.ts stmary teacher@stmary.databridgesol.space
  */
 import "../src/db/load-env";
 import { randomBytes } from "node:crypto";

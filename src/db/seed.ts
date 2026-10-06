@@ -123,17 +123,17 @@ async function main() {
                    ${otpauthUrl(totpSecret, admin.email)}
 
   St. Mary         http://stmary.${root}/login   (All-in, active)
-                   admin@stmary.example / password123
-                   teacher: tcruz@stmary.example / password123
+                   admin@stmary.databridgesol.space / password123
+                   teacher: teacher@stmary.databridgesol.space / password123
                    one account per office, all password123:
-                     registrar@stmary.example (the only one who edits students)
-                     discipline@stmary.example  guidance@stmary.example
-                     sao@stmary.example  chaplain@stmary.example  cashier@stmary.example
+                     registrar@stmary.databridgesol.space (the only one who edits students)
+                     discipline@stmary.databridgesol.space  guidance@stmary.databridgesol.space
+                     sao@stmary.databridgesol.space  chaplain@stmary.databridgesol.space  cashier@stmary.databridgesol.space
                    a student: ${stmary.sampleStudentNumber} / code ${stmary.sampleActivationCode}
                    parent code for that student: ${stmary.sampleParentCode}
 
   Northgate        http://northgate.${root}/login (Starter, SUSPENDED)
-                   admin@northgate.example / password123
+                   admin@northgate.databridgesol.space / password123
                    ${northgate.sampleStudentNumber} is in Northgate only — St. Mary cannot see it.
 `);
   process.exit(0);
@@ -166,7 +166,7 @@ async function createSchool(args: SeedArgs) {
         tier: args.tier,
         status: args.status,
         ownerName: `${args.name} owner`,
-        ownerEmail: `admin@${args.subdomain}.example`,
+        ownerEmail: `admin@${args.subdomain}.databridgesol.space`,
         ownerMobile: "+639170000000",
         address: args.address ?? null,
         phone: args.phone ?? null,
@@ -199,7 +199,7 @@ async function createSchool(args: SeedArgs) {
       .insert(users)
       .values({
         schoolId: school.id,
-        email: `admin@${args.subdomain}.example`,
+        email: `admin@${args.subdomain}.databridgesol.space`,
         name: "School admin",
         passwordHash: password,
         status: "active",
@@ -213,7 +213,7 @@ async function createSchool(args: SeedArgs) {
       .insert(users)
       .values({
         schoolId: school.id,
-        email: `principal@${args.subdomain}.example`,
+        email: `principal@${args.subdomain}.databridgesol.space`,
         name: "Maria Santos",
         passwordHash: password,
         status: "active",
@@ -227,7 +227,7 @@ async function createSchool(args: SeedArgs) {
       .insert(users)
       .values({
         schoolId: school.id,
-        email: `tcruz@${args.subdomain}.example`,
+        email: `teacher@${args.subdomain}.databridgesol.space`,
         name: "Teresa Cruz",
         passwordHash: password,
         status: "active",
@@ -252,7 +252,7 @@ async function createSchool(args: SeedArgs) {
         .insert(users)
         .values({
           schoolId: school.id,
-          email: `${office.handle}@${args.subdomain}.example`,
+          email: `${office.handle}@${args.subdomain}.databridgesol.space`,
           name: office.name,
           passwordHash: password,
           status: "active",
@@ -267,7 +267,7 @@ async function createSchool(args: SeedArgs) {
       .insert(users)
       .values({
         schoolId: school.id,
-        email: `parent@${args.subdomain}.example`,
+        email: `parent@${args.subdomain}.databridgesol.space`,
         name: "Lito Reyes",
         phone: "+639171234567",
         passwordHash: password,
