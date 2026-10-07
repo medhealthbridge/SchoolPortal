@@ -128,7 +128,9 @@ await who.locator("#identifier").fill("parent@stmary.databridgesol.space");
 await who.locator("#password").fill(`newpass-${stamp}`);
 await who.getByRole("button", { name: "Sign in" }).click();
 await who.waitForURL((u) => !u.pathname.startsWith("/login"), { timeout: 30_000 }).catch(() => {});
-check(!who.url().includes("/login"), "…and signs in with it");
+await who.waitForLoadState("networkidle");
+// Settled, not just navigating: a refused session bounces back to the sign-in form.
+check(!who.url().includes("/login") && !(await who.locator("#password").isVisible().catch(() => false)), "…and signs in with it");
 await who.goto(link, { waitUntil: "networkidle" });
 check((await text(who)).includes("cannot be used"), "the link works only once");
 
@@ -177,7 +179,8 @@ await owner.locator("#identifier").fill(`rosa.${stamp}@example.test`);
 await owner.locator("#password").fill(`owner-${stamp}-pw`);
 await owner.getByRole("button", { name: "Sign in" }).click();
 await owner.waitForURL((u) => !u.pathname.startsWith("/login"), { timeout: 30_000 }).catch(() => {});
-check(owner.url().includes(`san-isidro-academy-${stamp}`) && !owner.url().includes("/login"), "the new owner sets a password and signs in to their school");
+await owner.waitForLoadState("networkidle");
+check(!(await owner.locator("#password").isVisible().catch(() => false)) && owner.url().includes(`san-isidro-academy-${stamp}`) && !owner.url().includes("/login"), "the new owner sets a password and signs in to their school");
 
 await b.close();
 console.log(failed === 0 ? "\nall checks passed" : `\n${failed} check(s) failed`);

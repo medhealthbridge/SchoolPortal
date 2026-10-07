@@ -61,9 +61,14 @@ await p.setInputFiles('input[type="file"]', "/tmp/claude-0/logo.png");
 check(await p.locator('img[alt="Your logo"]').isVisible(), "the logo previews before it is saved");
 await p.getByRole("button", { name: "Continue" }).click();
 await p.getByRole("button", { name: "Create my school" }).click();
-await p.waitForSelector("text=Your school is live", { timeout: 30_000 });
-check(true, "the school is created");
-check(!(await p.locator("body").innerText()).includes("logo was not saved"), "the logo was accepted");
+// The heading, exactly: the page's intro also says "your school is live", and
+// waiting on loose text let this race ahead of the school being created.
+const live = await p
+  .getByRole("heading", { name: "Your school is live", exact: true })
+  .waitFor({ timeout: 60_000 })
+  .then(() => true, () => false);
+check(live, "the school is created");
+check(!/logo could not be saved|logo was not saved/i.test(await p.locator("body").innerText()), "the logo was accepted");
 
 // The logo is in the database and is served.
 const school = execSync(`npx tsx scripts/school-logo.ts ${slug}`).toString().trim().split("\n").pop();

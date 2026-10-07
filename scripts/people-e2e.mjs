@@ -96,7 +96,10 @@ await form.locator('input[name="endsAt"]').fill("14:00");
 for (const d of ["1", "3", "5"]) await form.locator(`input[name="weekday"][value="${d}"]`).check();
 await form.getByRole("button", { name: "Add class" }).click();
 await reg.waitForSelector("text=added on 3 days", { timeout: 20_000 }).catch(() => {});
-check((await text(reg)).includes("added on 3 days"), "one class added on Monday, Wednesday and Friday");
+const added = await text(reg);
+check(added.includes("added on 3 days"), "one class added on Monday, Wednesday and Friday");
+if (!added.includes("added on 3 days"))
+  await reg.screenshot({ path: process.env.QA_SHOTS ? `${process.env.QA_SHOTS}/people-add-class.png` : "/dev/null", fullPage: true });
 
 // The same teacher, another section, overlapping Wednesday: refused, with a reason.
 await go(reg, "/schedule");

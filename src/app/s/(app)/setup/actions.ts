@@ -21,7 +21,7 @@ import { hashPassword } from "@/lib/password";
 import { audit } from "@/lib/audit";
 import { deliver } from "@/lib/messaging";
 import { randomBytes } from "node:crypto";
-import type { Role } from "@/lib/roles";
+import { ROLE_LABELS, type Role } from "@/lib/roles";
 import { withPlatform } from "@/db";
 import { checkImage, keyFromUrl, put, remove } from "@/lib/storage";
 import { parseProfile } from "@/lib/profile";
@@ -168,6 +168,7 @@ export async function inviteStaff(_prev: ActionResult, form: FormData): Promise<
   const name = String(form.get("name") ?? "").trim();
   const role = String(form.get("role") ?? "") as Role;
   if (!email || !name || !role) return { error: "A name, an email and a role, please." };
+  if (!(role in ROLE_LABELS)) return { error: "Choose one of the school's roles." };
 
   const token = randomBytes(24).toString("base64url");
   await withTenant(school.id, async (tx) => {
