@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Button,
@@ -19,7 +19,7 @@ import {
 } from "@/components/ui";
 import { ChevronLeftIcon } from "@/components/icons";
 import { drainQueue, localCache, queue, uuid } from "@/lib/offline";
-import { CHECKS } from "@/lib/checks";
+import { CHECKS, checkShort, nextCheck } from "@/lib/checks";
 import { prettyTime } from "@/lib/format";
 
 type RosterEntry = {
@@ -44,6 +44,38 @@ type ClassData = {
   date: string;
 };
 
+/**
+ * One box beside the marks, cycling none → U → ID → none. It carries a letter
+ * rather than a word because it sits next to P A L E in a 320px row, and the
+ * amber is never the only thing saying so.
+ */
+function CheckButton({
+  name,
+  value,
+  onCycle,
+}: {
+  name: string;
+  value: string | null;
+  onCycle: () => void;
+}) {
+  const label = CHECKS.find((c) => c.key === value)?.label;
+  return (
+    <button
+      type="button"
+      onClick={onCycle}
+      aria-label={label ? `${name}: ${label}. Change` : `Note a check for ${name}`}
+      className="h-11 w-11 shrink-0 rounded-control border text-sm font-medium shadow-control"
+      style={{
+        background: value ? "var(--late-bg)" : "var(--surface)",
+        borderColor: value ? "var(--late-line)" : "var(--line)",
+        color: value ? "var(--late-fg)" : "var(--muted)",
+      }}
+    >
+      {checkShort(value) ?? "–"}
+    </button>
+  );
+}
+
 /** One finger does everything: a seat walks through the four marks. */
 const NEXT_STATUS: Record<AttendanceStatus, AttendanceStatus> = {
   present: "absent",
@@ -55,12 +87,14 @@ const NEXT_STATUS: Record<AttendanceStatus, AttendanceStatus> = {
 export default function TakeAttendance({ slotId, date }: { slotId: string; date: string }) {
   const [data, setData] = useState<ClassData | null>(null);
   const [statuses, setStatuses] = useState<Record<string, AttendanceStatus>>({});
-  const [checks, setChecks] = useState<Record<string, string[]>>({});
+  const [checks, setChecks] = useState<Record<string, string | null>>({});
   const [offline, setOffline] = useState(false);
   const [saved, setSaved] = useState<string | null>(null);
   const [pending, setPending] = useState(0);
   const [busy, setBusy] = useState(false);
   const [view, setView] = useState<"seats" | "list">("seats");
+  const [syncing, setSyncing] = useState(false);
+  const drainTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [query, setQuery] = useState("");
   const [lastChange, setLastChange] = useState<{
     statuses: Record<string, AttendanceStatus>;
@@ -75,11 +109,11 @@ export default function TakeAttendance({ slotId, date }: { slotId: string; date:
     // they are the newest thing this teacher did.
     const seed = async (d: ClassData) => {
       const next: Record<string, AttendanceStatus> = {};
-      const ticks: Record<string, string[]> = {};
+      const ticks: Record<string, string | null> = {};
       for (const s of d.roster) next[s.studentId] = "present";
       for (const m of d.marked) {
         next[m.studentId] = m.status;
-        if (m.checks?.length) ticks[m.studentId] = m.checks;
+        ticks[m.studentId] = m.checks?.[0] ?? null;
       }
 
       const queued = (await queue.all())
@@ -87,7 +121,7 @@ export default function TakeAttendance({ slotId, date }: { slotId: string; date:
         .sort((a, b) => a.markedAt.localeCompare(b.markedAt));
       for (const q of queued) {
         next[q.studentId] = q.status;
-        ticks[q.studentId] = q.checks ?? [];
+        ticks[q.studentId] = q.checks?.[0] ?? null;
       }
 
       setStatuses(next);
@@ -118,11 +152,45 @@ export default function TakeAttendance({ slotId, date }: { slotId: string; date:
     void load();
   }, [slotId, date, cacheKey]);
 
+  // A pending upload must not fire after the teacher has left the class.
+  useEffect(() => () => {
+    if (drainTimer.current) clearTimeout(drainTimer.current);
+  }, []);
+
   const counts: Counts = useMemo(() => {
     const out: Counts = { present: 0, absent: 0, late: 0, excused: 0 };
     for (const s of Object.values(statuses)) out[s] += 1;
     return out;
   }, [statuses]);
+
+  /**
+   * Every tap is written to this device at once, so nothing is lost if the
+   * phone dies or the signal goes. Uploading waits a beat, so walking down a
+   * row of seats is one upload rather than thirty.
+   */
+  const autoSave = useCallback(
+    async (studentId: string, status: AttendanceStatus, check: string | null) => {
+      await queue.replaceFor({
+        id: uuid(),
+        studentId,
+        slotId,
+        onDate: date,
+        status,
+        checks: check ? [check] : null,
+        markedAt: new Date().toISOString(),
+      });
+      setPending(await queue.countForSlot(slotId, date));
+      setSyncing(true);
+      if (drainTimer.current) clearTimeout(drainTimer.current);
+      drainTimer.current = setTimeout(async () => {
+        const result = await drainQueue();
+        setPending(await queue.countForSlot(slotId, date));
+        setSyncing(false);
+        setOffline(result.left > 0);
+      }, 1200);
+    },
+    [slotId, date],
+  );
 
   const setStatus = useCallback(
     (studentId: string, next: AttendanceStatus, who: string) => {
@@ -131,8 +199,9 @@ export default function TakeAttendance({ slotId, date }: { slotId: string; date:
         return { ...prev, [studentId]: next };
       });
       setSaved(null);
+      void autoSave(studentId, next, checks[studentId] ?? null);
     },
-    [],
+    [autoSave, checks],
   );
 
   const cycle = useCallback(
@@ -141,16 +210,15 @@ export default function TakeAttendance({ slotId, date }: { slotId: string; date:
     [statuses, setStatus],
   );
 
-  const toggleCheck = useCallback((studentId: string, key: string) => {
-    setChecks((prev) => {
-      const held = prev[studentId] ?? [];
-      return {
-        ...prev,
-        [studentId]: held.includes(key) ? held.filter((k) => k !== key) : [...held, key],
-      };
-    });
-    setSaved(null);
-  }, []);
+  const cycleCheck = useCallback(
+    (studentId: string) => {
+      const next = nextCheck(checks[studentId]);
+      setChecks((prev) => ({ ...prev, [studentId]: next }));
+      setSaved(null);
+      void autoSave(studentId, statuses[studentId] ?? "present", next);
+    },
+    [autoSave, checks, statuses],
+  );
 
   const submit = async () => {
     if (!data) return;
@@ -163,7 +231,7 @@ export default function TakeAttendance({ slotId, date }: { slotId: string; date:
         slotId,
         onDate: date,
         status: statuses[entry.studentId] ?? "present",
-        checks: checks[entry.studentId]?.length ? checks[entry.studentId] : null,
+        checks: checks[entry.studentId] ? [checks[entry.studentId]!] : null,
         markedAt,
       });
     }
@@ -323,7 +391,11 @@ export default function TakeAttendance({ slotId, date }: { slotId: string; date:
               onChange={(e) => setQuery(e.target.value)}
             />
           </Field>
-          <Section flush title={`${listRows.length} of ${data.roster.length} students`}>
+          <Section
+            flush
+            title={`${listRows.length} of ${data.roster.length} students`}
+            subtitle="The box before the marks notes a check: tap once for U, an improper uniform, again for ID, no school ID, again to clear it."
+          >
             {listRows.length === 0 ? (
               <div className="border-t border-line px-5 sm:px-6">
                 <EmptyState title="No student in this class matches that name">
@@ -337,8 +409,10 @@ export default function TakeAttendance({ slotId, date }: { slotId: string; date:
                     key={r.studentId}
                     className={`px-5 py-2 sm:px-6 ${i > 0 ? "border-t border-line" : ""}`}
                   >
-                    <div className="flex min-h-[60px] items-center gap-3">
-                      <span className="min-w-0 flex-1">
+                    {/* Below ~390px the controls drop under the name rather
+                        than squeezing it down to two letters. */}
+                    <div className="flex min-h-[60px] flex-wrap items-center gap-x-2 gap-y-2 py-1">
+                      <span className="min-w-[4.5rem] flex-1">
                         <span className="block truncate font-medium leading-tight">
                           {r.name.split(",")[0]}
                         </span>
@@ -346,33 +420,18 @@ export default function TakeAttendance({ slotId, date }: { slotId: string; date:
                           {r.name.split(",")[1]?.trim() ?? r.studentNumber}
                         </span>
                       </span>
-                      <SegmentedStatus
-                        label={`Mark for ${r.name}`}
-                        value={statuses[r.studentId] ?? "present"}
-                        onChange={(next) => setStatus(r.studentId, next, r.name.split(",")[0])}
-                      />
-                    </div>
-
-                    <div className="-mt-1 flex flex-wrap gap-1.5 pb-2">
-                      {CHECKS.map((c) => {
-                        const on = (checks[r.studentId] ?? []).includes(c.key);
-                        return (
-                          <button
-                            key={c.key}
-                            type="button"
-                            aria-pressed={on}
-                            aria-label={`${c.label} for ${r.name}`}
-                            onClick={() => toggleCheck(r.studentId, c.key)}
-                            className={`min-h-11 rounded-control border px-3 text-[13px] font-medium ${
-                              on
-                                ? "border-[var(--late-line)] bg-[var(--late-bg)] text-[var(--late-fg)]"
-                                : "border-line bg-surface text-muted hover:bg-subtle"
-                            }`}
-                          >
-                            {c.label}
-                          </button>
-                        );
-                      })}
+                      <span className="flex shrink-0 items-center gap-1.5">
+                        <CheckButton
+                          name={r.name}
+                          value={checks[r.studentId] ?? null}
+                          onCycle={() => cycleCheck(r.studentId)}
+                        />
+                        <SegmentedStatus
+                          label={`Mark for ${r.name}`}
+                          value={statuses[r.studentId] ?? "present"}
+                          onChange={(next) => setStatus(r.studentId, next, r.name.split(",")[0])}
+                        />
+                      </span>
                     </div>
                   </li>
                 ))}
@@ -386,10 +445,14 @@ export default function TakeAttendance({ slotId, date }: { slotId: string; date:
       <div className="sticky bottom-[68px] z-10 -mx-[var(--gutter)] flex flex-col gap-2 border-t border-line bg-surface px-[var(--gutter)] py-3 lg:bottom-0 lg:mx-0 lg:rounded-card lg:border lg:shadow-card">
         <div className="flex min-h-11 flex-wrap items-center justify-between gap-3">
           <span className="text-muted">
-            {lastChange?.label ??
-              (showSeats
-                ? "Everyone starts present. Tap a seat to change it."
-                : "Everyone starts present. Pick a mark to change it.")}
+            {syncing
+              ? "Saving…"
+              : pending > 0
+                ? `${pending} ${pending === 1 ? "mark is" : "marks are"} on this device, waiting for a signal.`
+                : (lastChange?.label ??
+                  (showSeats
+                    ? "Everyone starts present. Tap a seat to change it."
+                    : "Everyone starts present. Pick a mark to change it."))}
           </span>
           <div className="flex gap-2">
             {lastChange && (
