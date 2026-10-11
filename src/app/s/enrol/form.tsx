@@ -42,7 +42,7 @@ export function EnrolForm({ levels, schoolName }: { levels: string[]; schoolName
           </Select>
         </Field>
         <Field label="LRN" hint="12 digits, if the learner has one from a previous school.">
-          <Input name="lrn" inputMode="numeric" autoComplete="off" />
+          <Input name="lrn" inputMode="numeric" autoComplete="off" maxLength={12} pattern="\d*" />
         </Field>
         <Field label="First name">
           <Input name="first_name" required autoComplete="off" />
