@@ -8,10 +8,6 @@
 export const CHECKS = [
   { key: "uniform", label: "Improper uniform" },
   { key: "id", label: "No ID" },
-  { key: "shoes", label: "Improper shoes" },
-  { key: "grooming", label: "Grooming" },
-  { key: "pe_uniform", label: "No PE uniform" },
-  { key: "materials", label: "No materials" },
 ] as const;
 
 export type CheckKey = (typeof CHECKS)[number]["key"];

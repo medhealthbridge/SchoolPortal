@@ -19,7 +19,7 @@ import {
 } from "@/components/ui";
 import { ChevronLeftIcon } from "@/components/icons";
 import { drainQueue, localCache, queue, uuid } from "@/lib/offline";
-import { CHECKS, checkLabels } from "@/lib/checks";
+import { CHECKS } from "@/lib/checks";
 import { prettyTime } from "@/lib/format";
 
 type RosterEntry = {
@@ -56,7 +56,6 @@ export default function TakeAttendance({ slotId, date }: { slotId: string; date:
   const [data, setData] = useState<ClassData | null>(null);
   const [statuses, setStatuses] = useState<Record<string, AttendanceStatus>>({});
   const [checks, setChecks] = useState<Record<string, string[]>>({});
-  const [openChecks, setOpenChecks] = useState<string | null>(null);
   const [offline, setOffline] = useState(false);
   const [saved, setSaved] = useState<string | null>(null);
   const [pending, setPending] = useState(0);
@@ -309,7 +308,7 @@ export default function TakeAttendance({ slotId, date }: { slotId: string; date:
             onClick={() => setView("list")}
             className="min-h-11 text-[13px] text-muted underline underline-offset-2 hover:text-ink"
           >
-            Noting a uniform or ID check? Switch to List.
+            Noting an improper uniform or a missing ID? Switch to List.
           </button>
         </div>
       ) : (
@@ -354,59 +353,27 @@ export default function TakeAttendance({ slotId, date }: { slotId: string; date:
                       />
                     </div>
 
-                    <button
-                      type="button"
-                      aria-expanded={openChecks === r.studentId}
-                      // Named for the student: the chips below carry the same
-                      // words, and two buttons reading alike is a maze.
-                      aria-label={
-                        checkLabels(checks[r.studentId]).length > 0
-                          ? `Checks for ${r.name}: ${checkLabels(checks[r.studentId]).join(", ")}`
-                          : `Add a check for ${r.name}`
-                      }
-                      onClick={() =>
-                        setOpenChecks((cur) => (cur === r.studentId ? null : r.studentId))
-                      }
-                      className="-mt-1 flex min-h-11 w-full items-center gap-1.5 text-left text-[13px] text-muted hover:text-ink"
-                    >
-                      {checkLabels(checks[r.studentId]).length > 0 ? (
-                        <span className="flex flex-wrap gap-1">
-                          {checkLabels(checks[r.studentId]).map((l) => (
-                            <span
-                              key={l}
-                              className="rounded-[var(--r-pill)] border border-[var(--late-line)] bg-[var(--late-bg)] px-2 py-0.5 text-xs font-medium text-[var(--late-fg)]"
-                            >
-                              {l}
-                            </span>
-                          ))}
-                        </span>
-                      ) : (
-                        <span className="underline underline-offset-2">Add a check</span>
-                      )}
-                    </button>
-
-                    {openChecks === r.studentId && (
-                      <div className="flex flex-wrap gap-1.5 pb-2">
-                        {CHECKS.map((c) => {
-                          const on = (checks[r.studentId] ?? []).includes(c.key);
-                          return (
-                            <button
-                              key={c.key}
-                              type="button"
-                              aria-pressed={on}
-                              onClick={() => toggleCheck(r.studentId, c.key)}
-                              className={`min-h-11 rounded-control border px-3 text-sm font-medium ${
-                                on
-                                  ? "border-[var(--late-line)] bg-[var(--late-bg)] text-[var(--late-fg)]"
-                                  : "border-line bg-surface text-muted-strong hover:bg-subtle"
-                              }`}
-                            >
-                              {c.label}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
+                    <div className="-mt-1 flex flex-wrap gap-1.5 pb-2">
+                      {CHECKS.map((c) => {
+                        const on = (checks[r.studentId] ?? []).includes(c.key);
+                        return (
+                          <button
+                            key={c.key}
+                            type="button"
+                            aria-pressed={on}
+                            aria-label={`${c.label} for ${r.name}`}
+                            onClick={() => toggleCheck(r.studentId, c.key)}
+                            className={`min-h-11 rounded-control border px-3 text-[13px] font-medium ${
+                              on
+                                ? "border-[var(--late-line)] bg-[var(--late-bg)] text-[var(--late-fg)]"
+                                : "border-line bg-surface text-muted hover:bg-subtle"
+                            }`}
+                          >
+                            {c.label}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </li>
                 ))}
               </ul>
