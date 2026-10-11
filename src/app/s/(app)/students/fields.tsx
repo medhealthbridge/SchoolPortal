@@ -39,6 +39,8 @@ export function StudentFields({
             name="lrn"
             inputMode="numeric"
             autoComplete="off"
+            maxLength={12}
+            pattern="\d*"
             defaultValue={student?.lrn ?? ""}
           />
         </Field>

@@ -41,12 +41,20 @@ export type ImportIssue = { line: number; message: string };
  * Maps a sheet onto named columns. Errors are collected rather than thrown, so
  * the whole file can be shown back before anything is saved.
  */
+function normalizeHeader(h: string): string {
+  return h
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_|_$/g, "");
+}
+
 export function readSheet(text: string, required: string[]) {
   const rows = parseCsv(text);
   const issues: ImportIssue[] = [];
   if (rows.length === 0) return { header: [], records: [], issues: [{ line: 0, message: "The file is empty." }] };
 
-  const header = rows[0].map((h) => h.trim().toLowerCase().replace(/\s+/g, "_"));
+  const header = rows[0].map(normalizeHeader);
   for (const col of required) {
     if (!header.includes(col)) issues.push({ line: 1, message: `Missing column "${col}".` });
   }
