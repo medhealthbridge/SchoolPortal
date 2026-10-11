@@ -4,6 +4,7 @@ import { permissionsFor, ROLE_LABELS, type Role, type Permission } from "@/lib/r
 import type { ModuleKey } from "@/lib/modules";
 import { AppShell, type NavItem } from "@/components/shell";
 import { SignOutButton } from "@/components/sign-out";
+import { Toaster } from "@/components/toast";
 import { Callout, LinkButton } from "@/components/ui";
 import {
   CalendarIcon,
@@ -195,6 +196,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </Callout>
       )}
       {children}
+      <Toaster />
     </AppShell>
   );
 }

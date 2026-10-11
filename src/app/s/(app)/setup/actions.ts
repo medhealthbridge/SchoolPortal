@@ -1,21 +1,33 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq } from "drizzle-orm";
+import { and, count, eq, ne } from "drizzle-orm";
 import { withTenant } from "@/db";
 import { guessGroup } from "@/modules/grades/deped";
 import { schools } from "@/db/schema";
 import {
+  announcements,
+  assessments,
   branches,
+  enrollments,
   invites,
+  learningMaterials,
   rooms,
   schoolYears,
   seatPlans,
   sections,
   subjects,
+  timetableSlots,
   userRoles,
   users,
 } from "@/db/schema";
+
+/** 0 → A, 25 → Z, 26 → AA: section letters that never run out. */
+function letters(n: number): string {
+  let s = "";
+  for (let i = n + 1; i > 0; i = Math.floor((i - 1) / 26)) s = String.fromCharCode(65 + ((i - 1) % 26)) + s;
+  return s;
+}
 import { requirePermission } from "@/lib/guard";
 import { hashPassword } from "@/lib/password";
 import { audit } from "@/lib/audit";
@@ -79,12 +91,17 @@ export async function addSection(_prev: ActionResult, form: FormData): Promise<A
       .limit(1);
     if (!year) return { error: "Set the current school year first." };
 
+    const existing = await tx
+      .select({ name: sections.name })
+      .from(sections)
+      .where(and(eq(sections.schoolId, school.id), eq(sections.schoolYearId, year.id), eq(sections.level, level)));
+    const taken = new Set(existing.map((s) => s.name.toLowerCase()));
     if (!name) {
-      const existing = await tx
-        .select()
-        .from(sections)
-        .where(and(eq(sections.schoolId, school.id), eq(sections.schoolYearId, year.id), eq(sections.level, level)));
-      name = `Section ${String.fromCharCode(65 + existing.length)}`;
+      let n = 0;
+      while (taken.has(`section ${letters(n)}`.toLowerCase())) n++;
+      name = `Section ${letters(n)}`;
+    } else if (taken.has(name.toLowerCase())) {
+      return { error: `${level} already has a section called ${name}.` };
     }
 
     const [mainBranch] = await tx
@@ -104,17 +121,16 @@ export async function addSection(_prev: ActionResult, form: FormData): Promise<A
       })
       .onConflictDoNothing()
       .returning();
-    if (row) {
-      await audit(tx, {
-        schoolId: school.id,
-        actorUserId: session.userId,
-        actorLabel: session.name,
-        action: "section.created",
-        entity: "sections",
-        entityId: row.id,
-        after: { level, name },
-      });
-    }
+    if (!row) return { error: `${level} already has a section called ${name}.` };
+    await audit(tx, {
+      schoolId: school.id,
+      actorUserId: session.userId,
+      actorLabel: session.name,
+      action: "section.created",
+      entity: "sections",
+      entityId: row.id,
+      after: { level, name },
+    });
     return { ok: `${level} ${name} added.` };
   });
 
@@ -129,14 +145,27 @@ export async function updateSection(_prev: ActionResult, form: FormData): Promis
   const name = String(form.get("name") ?? "").trim();
   if (!id || !level) return { error: "A section needs a level." };
 
-  await withTenant(school.id, async (tx) => {
+  const result = await withTenant(school.id, async (tx): Promise<ActionResult> => {
     const [row] = await tx
       .select()
       .from(sections)
       .where(and(eq(sections.schoolId, school.id), eq(sections.id, id)))
       .limit(1);
-    if (!row) return;
+    if (!row) return { error: "That section is no longer on file." };
     const next = { level, name: name || row.name };
+    const [twin] = await tx
+      .select({ id: sections.id })
+      .from(sections)
+      .where(
+        and(
+          eq(sections.schoolYearId, row.schoolYearId),
+          eq(sections.level, next.level),
+          eq(sections.name, next.name),
+          ne(sections.id, id),
+        ),
+      )
+      .limit(1);
+    if (twin) return { error: `${next.level} already has a section called ${next.name}.` };
     await tx.update(sections).set(next).where(eq(sections.id, id));
     await audit(tx, {
       schoolId: school.id,
@@ -148,21 +177,39 @@ export async function updateSection(_prev: ActionResult, form: FormData): Promis
       before: { level: row.level, name: row.name },
       after: next,
     });
+    return { ok: `${next.level} ${next.name} saved.` };
   });
   revalidatePath("/setup");
-  return { ok: `${level} ${name} saved.` };
+  return result;
 }
 
+/**
+ * Deleting a section cascades to its enrolments, schedule, attendance,
+ * assessments, seat plans, announcements and materials, so it is refused once
+ * any of those exist. Only a section added by mistake can go.
+ */
 export async function deleteSection(_prev: ActionResult, form: FormData): Promise<ActionResult> {
   const { school, session } = await requirePermission("sections.manage");
   const id = String(form.get("id") ?? "");
-  await withTenant(school.id, async (tx) => {
+  const result = await withTenant(school.id, async (tx): Promise<ActionResult> => {
     const [row] = await tx
       .select()
       .from(sections)
       .where(and(eq(sections.schoolId, school.id), eq(sections.id, id)))
       .limit(1);
-    if (!row) return;
+    if (!row) return { error: "That section is no longer on file." };
+    const used = await Promise.all(
+      [enrollments, timetableSlots, assessments, seatPlans, announcements, learningMaterials].map(
+        async (t) => {
+          const [r] = await tx.select({ n: count() }).from(t).where(eq(t.sectionId, id));
+          return Number(r?.n ?? 0);
+        },
+      ),
+    );
+    if (used.some((n) => n > 0))
+      return {
+        error: `${row.level} ${row.name} has students, classes or records, so it cannot be deleted. Rename it instead.`,
+      };
     await tx.delete(sections).where(eq(sections.id, id));
     await audit(tx, {
       schoolId: school.id,
@@ -173,9 +220,10 @@ export async function deleteSection(_prev: ActionResult, form: FormData): Promis
       entityId: id,
       before: { level: row.level, name: row.name },
     });
+    return { ok: `${row.level} ${row.name} deleted.` };
   });
   revalidatePath("/setup");
-  return { ok: "Section removed." };
+  return result;
 }
 
 export async function addSubject(_prev: ActionResult, form: FormData): Promise<ActionResult> {
@@ -196,12 +244,14 @@ export async function addRoom(_prev: ActionResult, form: FormData): Promise<Acti
   const rowCount = Math.min(12, Math.max(1, Number(form.get("rows") ?? 5)));
   const colCount = Math.min(12, Math.max(1, Number(form.get("cols") ?? 6)));
   if (!name) return { error: "A room needs a name." };
-  await withTenant(school.id, (tx) =>
+  const inserted = await withTenant(school.id, (tx) =>
     tx
       .insert(rooms)
       .values({ schoolId: school.id, name, rows: rowCount, cols: colCount })
-      .onConflictDoNothing(),
+      .onConflictDoNothing()
+      .returning({ id: rooms.id }),
   );
+  if (inserted.length === 0) return { error: `There is already a room called ${name}.` };
   revalidatePath("/setup");
   return { ok: `${name} added (${rowCount}×${colCount} = ${rowCount * colCount} seats).` };
 }
@@ -214,13 +264,19 @@ export async function updateRoom(_prev: ActionResult, form: FormData): Promise<A
   const colCount = Math.min(12, Math.max(1, Number(form.get("cols") ?? 6)));
   if (!id || !name) return { error: "A room needs a name." };
 
-  await withTenant(school.id, async (tx) => {
+  const result = await withTenant(school.id, async (tx): Promise<ActionResult> => {
     const [row] = await tx
       .select()
       .from(rooms)
       .where(and(eq(rooms.schoolId, school.id), eq(rooms.id, id)))
       .limit(1);
-    if (!row) return;
+    if (!row) return { error: "That room is no longer on file." };
+    const [twin] = await tx
+      .select({ id: rooms.id })
+      .from(rooms)
+      .where(and(eq(rooms.schoolId, school.id), eq(rooms.name, name), ne(rooms.id, id)))
+      .limit(1);
+    if (twin) return { error: `There is already a room called ${name}.` };
     await tx.update(rooms).set({ name, rows: rowCount, cols: colCount }).where(eq(rooms.id, id));
     await audit(tx, {
       schoolId: school.id,
@@ -232,21 +288,33 @@ export async function updateRoom(_prev: ActionResult, form: FormData): Promise<A
       before: { name: row.name, rows: row.rows, cols: row.cols },
       after: { name, rows: rowCount, cols: colCount },
     });
+    return { ok: `${name} saved (${rowCount}×${colCount} = ${rowCount * colCount} seats).` };
   });
   revalidatePath("/setup");
-  return { ok: `${name} saved (${rowCount}×${colCount} = ${rowCount * colCount} seats).` };
+  return result;
 }
 
+/** A room in the schedule or with a seat plan is refused: deleting would drop both. */
 export async function deleteRoom(_prev: ActionResult, form: FormData): Promise<ActionResult> {
   const { school, session } = await requirePermission("sections.manage");
   const id = String(form.get("id") ?? "");
-  await withTenant(school.id, async (tx) => {
+  const result = await withTenant(school.id, async (tx): Promise<ActionResult> => {
     const [row] = await tx
       .select()
       .from(rooms)
       .where(and(eq(rooms.schoolId, school.id), eq(rooms.id, id)))
       .limit(1);
-    if (!row) return;
+    if (!row) return { error: "That room is no longer on file." };
+    const used = await Promise.all(
+      [timetableSlots, seatPlans].map(async (t) => {
+        const [r] = await tx.select({ n: count() }).from(t).where(eq(t.roomId, id));
+        return Number(r?.n ?? 0);
+      }),
+    );
+    if (used.some((n) => n > 0))
+      return {
+        error: `${row.name} is in the class schedule or has a seat plan, so it cannot be deleted. Rename it instead.`,
+      };
     await tx.delete(rooms).where(eq(rooms.id, id));
     await audit(tx, {
       schoolId: school.id,
@@ -257,9 +325,10 @@ export async function deleteRoom(_prev: ActionResult, form: FormData): Promise<A
       entityId: id,
       before: { name: row.name },
     });
+    return { ok: `${row.name} deleted.` };
   });
   revalidatePath("/setup");
-  return { ok: "Room removed." };
+  return result;
 }
 
 export async function saveSeatPlan(

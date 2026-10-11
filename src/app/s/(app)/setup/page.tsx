@@ -48,11 +48,14 @@ export default async function SetupPage() {
       .limit(1);
     return {
       year: year ?? null,
-      sections: await tx
-        .select()
-        .from(sections)
-        .where(eq(sections.schoolId, school.id))
-        .orderBy(asc(sections.level), asc(sections.name)),
+      // Only this year's: last year's "Grade 7 Rizal" would look the same here.
+      sections: year
+        ? await tx
+            .select()
+            .from(sections)
+            .where(and(eq(sections.schoolId, school.id), eq(sections.schoolYearId, year.id)))
+            .orderBy(asc(sections.level), asc(sections.name))
+        : [],
       subjects: await tx
         .select()
         .from(subjects)
@@ -312,7 +315,11 @@ export default async function SetupPage() {
       </Section>
 
       <div className="grid gap-10 lg:grid-cols-2">
-        <Section id="sections" title="Sections" subtitle={`${data.sections.length} so far`}>
+        <Section
+          id="sections"
+          title="Sections"
+          subtitle={data.year ? `${data.sections.length} in ${data.year.name}` : "Set the school year first"}
+        >
           <ActionForm action={addSection} submitLabel="Add section">
             <Field label="Level">
               <Input name="level" placeholder="Grade 7" required />
@@ -340,7 +347,13 @@ export default async function SetupPage() {
                           <Input name="name" defaultValue={s.name} />
                         </Field>
                       </ActionForm>
-                      <ActionForm action={deleteSection} submitLabel="Delete section" className="mt-2" destructive>
+                      <ActionForm
+                        action={deleteSection}
+                        submitLabel="Delete section"
+                        className="mt-2"
+                        destructive
+                        confirm={`Delete ${s.level} ${s.name}? This cannot be undone.`}
+                      >
                         <input type="hidden" name="id" value={s.id} />
                       </ActionForm>
                     </div>
@@ -410,7 +423,13 @@ export default async function SetupPage() {
                           </Field>
                         </div>
                       </ActionForm>
-                      <ActionForm action={deleteRoom} submitLabel="Delete room" className="mt-2" destructive>
+                      <ActionForm
+                        action={deleteRoom}
+                        submitLabel="Delete room"
+                        className="mt-2"
+                        destructive
+                        confirm={`Delete ${r.name}? This cannot be undone.`}
+                      >
                         <input type="hidden" name="id" value={r.id} />
                       </ActionForm>
                     </div>

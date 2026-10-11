@@ -15,10 +15,14 @@ const NOW = new Date("2026-10-06T00:00:00Z");
 const base = { student_number: "2025-0001", first_name: "Maria", last_name: "Dela Cruz" };
 
 describe("who may change student records", () => {
-  it("gives the registrar the records and the school admin only a view", () => {
+  it("gives the registrar and the school admin the records", () => {
     expect(can(["registrar"], "students.manage")).toBe(true);
-    expect(can(["school_admin"], "students.manage")).toBe(false);
-    expect(can(["school_admin"], "students.view")).toBe(true);
+    expect(can(["school_admin"], "students.manage")).toBe(true);
+  });
+
+  it("keeps the school admin out of counselling cases", () => {
+    expect(can(["school_admin"], "guidance.manage")).toBe(false);
+    expect(can(["guidance_counselor"], "guidance.manage")).toBe(true);
   });
 
   it("keeps everyone else out", () => {
