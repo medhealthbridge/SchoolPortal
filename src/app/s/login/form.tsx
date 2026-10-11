@@ -35,6 +35,10 @@ export default function LoginForm() {
           required
         />
       </Field>
+      <label className="flex min-h-11 items-center gap-3 text-sm">
+        <input type="checkbox" name="remember" defaultChecked className="size-5" />
+        <span>Keep me signed in</span>
+      </label>
       <Button type="submit" size="lg" disabled={pending}>
         {pending ? "Signing in" : "Sign in"}
       </Button>
