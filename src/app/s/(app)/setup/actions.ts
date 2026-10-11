@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, count, eq, ne } from "drizzle-orm";
+import { and, count, eq, isNull, ne } from "drizzle-orm";
 import { z } from "zod";
 import { withTenant } from "@/db";
 import { guessGroup } from "@/modules/grades/deped";
@@ -424,6 +424,9 @@ export async function acceptInvite(token: string, name: string, password: string
       .limit(1);
 
     // A typed address that is someone else's would take over their sign-in.
+    // An address still waiting on its own invite counts: claiming it would make
+    // this account the "existing" one when that invite is accepted, and the
+    // role meant for them — up to school_admin — would land here instead.
     const signIn = chosen || invite.email;
     if (!existing && signIn !== invite.email) {
       const [taken] = await tx
@@ -431,8 +434,19 @@ export async function acceptInvite(token: string, name: string, password: string
         .from(users)
         .where(and(eq(users.schoolId, school.id), eq(users.email, signIn)))
         .limit(1);
-      if (taken)
-        return { error: "That email already signs in here. Use another, or ask your school office." };
+      const [promised] = await tx
+        .select({ id: invites.id })
+        .from(invites)
+        .where(
+          and(
+            eq(invites.schoolId, school.id),
+            eq(invites.email, signIn),
+            isNull(invites.acceptedAt),
+          ),
+        )
+        .limit(1);
+      if (taken || promised)
+        return { error: "That email is already spoken for here. Use another, or ask your school office." };
     }
 
     const user =
