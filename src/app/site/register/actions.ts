@@ -7,6 +7,7 @@ import { emailVerifications, schools } from "@/db/schema";
 import { checkImage, put } from "@/lib/storage";
 import { activationCode, hashPassword } from "@/lib/password";
 import { deliver } from "@/lib/messaging";
+import { emailTemplates } from "@/lib/email-template";
 import { subdomainAvailable, subdomainProblem } from "@/lib/tenant";
 import { createSchoolWithOwner, ownDatabaseByDefault } from "@/lib/onboarding";
 
@@ -25,6 +26,7 @@ export async function sendVerificationCode(email: string) {
     to: parsed.data,
     subject: "Your SchoolPortal verification code",
     body: `Your verification code is ${code}. It expires in 30 minutes.`,
+    html: emailTemplates.verificationCode(code),
   });
 
   // A code nobody can receive is a dead end that looks like a working form:
@@ -152,17 +154,22 @@ export async function registerSchool(input: RegistrationInput, logoForm?: FormDa
   const root = process.env.ROOT_DOMAIN ?? "lvh.me:3000";
   const protocol = root.startsWith("localhost") || root.includes("lvh.me") ? "http" : "https";
 
+  const loginUrl = `${protocol}://${school.subdomain}.${root}/login`;
   await deliver({
     schoolId: school.id,
     channel: "email",
     to: email,
     subject: `${school.name} is live on SchoolPortal`,
     body: `Your school is ready at ${protocol}://${school.subdomain}.${root}. Sign in with ${email}.`,
+    html: emailTemplates.schoolLive(
+      { name: school.name, subdomain: school.subdomain, email },
+      loginUrl,
+    ),
   });
 
   return {
     ok: true as const,
-    url: `${protocol}://${school.subdomain}.${root}/login`,
+    url: loginUrl,
     subdomain: school.subdomain,
     logoNote,
   };

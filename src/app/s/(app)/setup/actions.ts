@@ -20,6 +20,7 @@ import { requirePermission } from "@/lib/guard";
 import { hashPassword } from "@/lib/password";
 import { audit } from "@/lib/audit";
 import { deliver } from "@/lib/messaging";
+import { emailTemplates } from "@/lib/email-template";
 import { randomBytes } from "node:crypto";
 import { ROLE_LABELS, type Role } from "@/lib/roles";
 import { withPlatform } from "@/db";
@@ -184,12 +185,14 @@ export async function inviteStaff(_prev: ActionResult, form: FormData): Promise<
 
   const root = process.env.ROOT_DOMAIN ?? "lvh.me:3000";
   const protocol = root.includes("lvh.me") || root.startsWith("localhost") ? "http" : "https";
+  const inviteUrl = `${protocol}://${school.subdomain}.${root}/invite/${token}`;
   await deliver({
     schoolId: school.id,
     channel: "email",
     to: email,
     subject: `Join ${school.name} on SchoolPortal`,
-    body: `${session.name} invited you as ${role}. Accept at ${protocol}://${school.subdomain}.${root}/invite/${token}`,
+    body: `${session.name} invited you as ${role}. Accept at ${inviteUrl}`,
+    html: emailTemplates.staffInvite({ name: school.name }, session.name, role, inviteUrl),
   });
 
   revalidatePath("/people");

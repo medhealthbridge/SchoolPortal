@@ -7,6 +7,7 @@ import { guardianInvites } from "@/db/schema";
 import { requirePermission } from "@/lib/guard";
 import { audit } from "@/lib/audit";
 import { deliver } from "@/lib/messaging";
+import { emailTemplates } from "@/lib/email-template";
 import { schoolUrl } from "@/lib/school-url";
 import { createGuardianInvite, mayInviteFor, unlinkGuardian } from "@/lib/guardians";
 
@@ -41,7 +42,11 @@ export async function inviteParent(_prev: InviteResult, form: FormData): Promise
   const email = String(form.get("email") ?? "").trim().toLowerCase();
   const phone = String(form.get("phone") ?? "").trim();
   const body = `${session.name} invited you to follow your child at ${school.name}. Open ${link} to see grades, attendance and school news. The link works for 14 days.`;
-  await deliver({ schoolId: school.id, channel: "email", to: email, subject: `Follow your child at ${school.name}`, body });
+  await deliver({
+    schoolId: school.id, channel: "email", to: email,
+    subject: `Follow your child at ${school.name}`, body,
+    html: emailTemplates.parentInvite({ name: school.name }, session.name, link),
+  });
   if (phone) await deliver({ schoolId: school.id, channel: "sms", to: phone, body });
 
   revalidatePath("/classes", "layout");

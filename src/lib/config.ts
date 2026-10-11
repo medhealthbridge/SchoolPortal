@@ -79,11 +79,11 @@ export function configProblems(env: NodeJS.ProcessEnv = process.env): ConfigProb
     });
   }
 
-  for (const key of ["EMAIL_API_KEY", "SMS_API_KEY"] as const) {
-    const url = key === "EMAIL_API_KEY" ? "EMAIL_API_URL" : "SMS_API_URL";
-    if (has(key) && !has(url)) {
-      problems.push({ key, says: `is set but ${url} is not, so nothing would be sent.` });
-    }
+  if (has("SMTP_USER") && !has("SMTP_PASS")) {
+    problems.push({ key: "SMTP_PASS", says: "is not set but SMTP_USER is, so email cannot authenticate." });
+  }
+  if (has("SMS_API_KEY") && !has("SMS_API_URL")) {
+    problems.push({ key: "SMS_API_KEY", says: "is set but SMS_API_URL is not, so nothing would be sent." });
   }
 
   return problems;

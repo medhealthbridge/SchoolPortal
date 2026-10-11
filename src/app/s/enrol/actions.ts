@@ -4,6 +4,7 @@ import { withTenant } from "@/db";
 import { audit } from "@/lib/audit";
 import { applicationStatus, parseApplication, submitApplication } from "@/lib/enrolment";
 import { deliver } from "@/lib/messaging";
+import { emailTemplates } from "@/lib/email-template";
 import { clientIp } from "@/lib/request";
 import { currentSchool } from "@/lib/session";
 import { attempt, retryMessage, SIGNUP } from "@/lib/throttle";
@@ -38,7 +39,11 @@ export async function applyOnline(_prev: EnrolResult, form: FormData): Promise<E
   const text = `${school.name} received the enrolment application for ${learner} (${v.gradeLevel}). Reference ${row.reference}. The registrar will contact you.`;
   await deliver({ schoolId: school.id, channel: "sms", to: v.guardianPhone, body: text });
   if (v.guardianEmail)
-    await deliver({ schoolId: school.id, channel: "email", to: v.guardianEmail, subject: `Application received: ${learner}`, body: text });
+    await deliver({
+      schoolId: school.id, channel: "email", to: v.guardianEmail,
+      subject: `Application received: ${learner}`, body: text,
+      html: emailTemplates.applicationReceived({ name: school.name }, learner, v.gradeLevel, row.reference),
+    });
   return { reference: row.reference };
 }
 
