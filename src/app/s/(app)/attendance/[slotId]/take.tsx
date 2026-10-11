@@ -19,6 +19,7 @@ import {
 } from "@/components/ui";
 import { ChevronLeftIcon } from "@/components/icons";
 import { drainQueue, localCache, queue, uuid } from "@/lib/offline";
+import { CHECKS, checkLabels } from "@/lib/checks";
 import { prettyTime } from "@/lib/format";
 
 type RosterEntry = {
@@ -39,7 +40,7 @@ type ClassData = {
     endsAt: string;
   };
   roster: RosterEntry[];
-  marked: { studentId: string; status: AttendanceStatus }[];
+  marked: { studentId: string; status: AttendanceStatus; checks?: string[] }[];
   date: string;
 };
 
@@ -54,6 +55,8 @@ const NEXT_STATUS: Record<AttendanceStatus, AttendanceStatus> = {
 export default function TakeAttendance({ slotId, date }: { slotId: string; date: string }) {
   const [data, setData] = useState<ClassData | null>(null);
   const [statuses, setStatuses] = useState<Record<string, AttendanceStatus>>({});
+  const [checks, setChecks] = useState<Record<string, string[]>>({});
+  const [openChecks, setOpenChecks] = useState<string | null>(null);
   const [offline, setOffline] = useState(false);
   const [saved, setSaved] = useState<string | null>(null);
   const [pending, setPending] = useState(0);
@@ -73,15 +76,23 @@ export default function TakeAttendance({ slotId, date }: { slotId: string; date:
     // they are the newest thing this teacher did.
     const seed = async (d: ClassData) => {
       const next: Record<string, AttendanceStatus> = {};
+      const ticks: Record<string, string[]> = {};
       for (const s of d.roster) next[s.studentId] = "present";
-      for (const m of d.marked) next[m.studentId] = m.status;
+      for (const m of d.marked) {
+        next[m.studentId] = m.status;
+        if (m.checks?.length) ticks[m.studentId] = m.checks;
+      }
 
       const queued = (await queue.all())
         .filter((q) => q.slotId === slotId && q.onDate === date)
         .sort((a, b) => a.markedAt.localeCompare(b.markedAt));
-      for (const q of queued) next[q.studentId] = q.status;
+      for (const q of queued) {
+        next[q.studentId] = q.status;
+        ticks[q.studentId] = q.checks ?? [];
+      }
 
       setStatuses(next);
+      setChecks(ticks);
     };
 
     const load = async () => {
@@ -131,6 +142,17 @@ export default function TakeAttendance({ slotId, date }: { slotId: string; date:
     [statuses, setStatus],
   );
 
+  const toggleCheck = useCallback((studentId: string, key: string) => {
+    setChecks((prev) => {
+      const held = prev[studentId] ?? [];
+      return {
+        ...prev,
+        [studentId]: held.includes(key) ? held.filter((k) => k !== key) : [...held, key],
+      };
+    });
+    setSaved(null);
+  }, []);
+
   const submit = async () => {
     if (!data) return;
     setBusy(true);
@@ -142,6 +164,7 @@ export default function TakeAttendance({ slotId, date }: { slotId: string; date:
         slotId,
         onDate: date,
         status: statuses[entry.studentId] ?? "present",
+        checks: checks[entry.studentId]?.length ? checks[entry.studentId] : null,
         markedAt,
       });
     }
@@ -281,6 +304,13 @@ export default function TakeAttendance({ slotId, date }: { slotId: string; date:
           <p className="flex h-6 items-center justify-center rounded-[var(--r-pill)] border border-dashed border-line-strong text-xs text-muted">
             Whiteboard · front of room
           </p>
+          <button
+            type="button"
+            onClick={() => setView("list")}
+            className="min-h-11 text-[13px] text-muted underline underline-offset-2 hover:text-ink"
+          >
+            Noting a uniform or ID check? Switch to List.
+          </button>
         </div>
       ) : (
         <>
@@ -306,23 +336,77 @@ export default function TakeAttendance({ slotId, date }: { slotId: string; date:
                 {listRows.map((r, i) => (
                   <li
                     key={r.studentId}
-                    className={`flex min-h-[60px] items-center gap-3 px-5 py-2 sm:px-6 ${
-                      i > 0 ? "border-t border-line" : ""
-                    }`}
+                    className={`px-5 py-2 sm:px-6 ${i > 0 ? "border-t border-line" : ""}`}
                   >
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-medium leading-tight">
-                        {r.name.split(",")[0]}
+                    <div className="flex min-h-[60px] items-center gap-3">
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-medium leading-tight">
+                          {r.name.split(",")[0]}
+                        </span>
+                        <span className="block truncate text-[13px] leading-tight text-muted">
+                          {r.name.split(",")[1]?.trim() ?? r.studentNumber}
+                        </span>
                       </span>
-                      <span className="block truncate text-[13px] leading-tight text-muted">
-                        {r.name.split(",")[1]?.trim() ?? r.studentNumber}
-                      </span>
-                    </span>
-                    <SegmentedStatus
-                      label={`Mark for ${r.name}`}
-                      value={statuses[r.studentId] ?? "present"}
-                      onChange={(next) => setStatus(r.studentId, next, r.name.split(",")[0])}
-                    />
+                      <SegmentedStatus
+                        label={`Mark for ${r.name}`}
+                        value={statuses[r.studentId] ?? "present"}
+                        onChange={(next) => setStatus(r.studentId, next, r.name.split(",")[0])}
+                      />
+                    </div>
+
+                    <button
+                      type="button"
+                      aria-expanded={openChecks === r.studentId}
+                      // Named for the student: the chips below carry the same
+                      // words, and two buttons reading alike is a maze.
+                      aria-label={
+                        checkLabels(checks[r.studentId]).length > 0
+                          ? `Checks for ${r.name}: ${checkLabels(checks[r.studentId]).join(", ")}`
+                          : `Add a check for ${r.name}`
+                      }
+                      onClick={() =>
+                        setOpenChecks((cur) => (cur === r.studentId ? null : r.studentId))
+                      }
+                      className="-mt-1 flex min-h-11 w-full items-center gap-1.5 text-left text-[13px] text-muted hover:text-ink"
+                    >
+                      {checkLabels(checks[r.studentId]).length > 0 ? (
+                        <span className="flex flex-wrap gap-1">
+                          {checkLabels(checks[r.studentId]).map((l) => (
+                            <span
+                              key={l}
+                              className="rounded-[var(--r-pill)] border border-[var(--late-line)] bg-[var(--late-bg)] px-2 py-0.5 text-xs font-medium text-[var(--late-fg)]"
+                            >
+                              {l}
+                            </span>
+                          ))}
+                        </span>
+                      ) : (
+                        <span className="underline underline-offset-2">Add a check</span>
+                      )}
+                    </button>
+
+                    {openChecks === r.studentId && (
+                      <div className="flex flex-wrap gap-1.5 pb-2">
+                        {CHECKS.map((c) => {
+                          const on = (checks[r.studentId] ?? []).includes(c.key);
+                          return (
+                            <button
+                              key={c.key}
+                              type="button"
+                              aria-pressed={on}
+                              onClick={() => toggleCheck(r.studentId, c.key)}
+                              className={`min-h-11 rounded-control border px-3 text-sm font-medium ${
+                                on
+                                  ? "border-[var(--late-line)] bg-[var(--late-bg)] text-[var(--late-fg)]"
+                                  : "border-line bg-surface text-muted-strong hover:bg-subtle"
+                              }`}
+                            >
+                              {c.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                   </li>
                 ))}
               </ul>

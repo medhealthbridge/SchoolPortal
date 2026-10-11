@@ -16,6 +16,7 @@ export type QueuedRecord = {
   slotId: string;
   onDate: string;
   status: "present" | "absent" | "late" | "excused";
+  checks?: string[] | null;
   note?: string | null;
   markedAt: string;
 };

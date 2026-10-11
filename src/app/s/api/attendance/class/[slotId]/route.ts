@@ -34,6 +34,7 @@ export async function GET(
           id: m.id,
           studentId: m.studentId,
           status: m.status,
+          checks: m.checks ?? [],
           markedAt: m.markedAt.toISOString(),
         })),
         date,

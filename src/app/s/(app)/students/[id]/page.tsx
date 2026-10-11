@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, isNotNull } from "drizzle-orm";
 import { withTenant } from "@/db";
-import { enrollments, schoolYears, sections, students } from "@/db/schema";
+import { attendanceRecords, enrollments, schoolYears, sections, students } from "@/db/schema";
+import { checkLabels } from "@/lib/checks";
 import { requirePermission } from "@/lib/guard";
 import { ActionForm } from "@/components/action-form";
 import { Button, Callout, LinkButton, Meta, PageHeader, Pill, Section } from "@/components/ui";
@@ -51,10 +52,39 @@ export default async function StudentRecordPage({
       .from(sections)
       .where(eq(sections.schoolId, school.id))
       .orderBy(asc(sections.level), asc(sections.name));
-    return { student, enrolment, sectionList, family: await guardiansOf(tx, school.id, id) };
+    const checks = await tx
+      .select({ onDate: attendanceRecords.onDate, checks: attendanceRecords.checks })
+      .from(attendanceRecords)
+      .where(
+        and(
+          eq(attendanceRecords.schoolId, school.id),
+          eq(attendanceRecords.studentId, id),
+          isNotNull(attendanceRecords.checks),
+        ),
+      )
+      .orderBy(desc(attendanceRecords.onDate))
+      .limit(60);
+    return {
+      student,
+      enrolment,
+      sectionList,
+      checks,
+      family: await guardiansOf(tx, school.id, id),
+    };
   });
   if (!data) notFound();
-  const { student, enrolment, sectionList, family } = data;
+  const { student, enrolment, sectionList, checks, family } = data;
+
+  // One line a day: the same uniform is noted in every class period.
+  const checksByDate = new Map<string, Set<string>>();
+  for (const r of checks) {
+    const labels = checkLabels(r.checks);
+    if (labels.length === 0) continue;
+    const seen = checksByDate.get(r.onDate) ?? new Set<string>();
+    for (const l of labels) seen.add(l);
+    checksByDate.set(r.onDate, seen);
+  }
+  const checkDays = [...checksByDate.entries()].slice(0, 12);
   const away = Boolean(student.archivedAt);
 
   return (
@@ -102,6 +132,31 @@ export default async function StudentRecordPage({
           />
         </ActionForm>
       </Section>
+
+      {checkDays.length > 0 && (
+        <Section
+          title="Uniform and grooming"
+          subtitle="What teachers noted while taking attendance. A record only; no case is open."
+        >
+          <ul className="-mx-1">
+            {checkDays.map(([onDate, labels], i) => (
+              <li
+                key={onDate}
+                className={`flex flex-wrap items-center gap-2 px-1 py-2.5 ${i > 0 ? "border-t border-line" : ""}`}
+              >
+                <span className="w-28 shrink-0 text-[13px] tabular-nums text-muted">{onDate}</span>
+                <span className="flex flex-wrap gap-1">
+                  {[...labels].map((l) => (
+                    <Pill key={l} tone="warn">
+                      {l}
+                    </Pill>
+                  ))}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
 
       <Section
         title="Parents and guardians"

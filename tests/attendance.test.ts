@@ -167,6 +167,51 @@ describe("attendance", () => {
     await dropSchool(other.school.id);
   });
 
+  it("keeps the uniform checks a teacher ticked, and drops anything invented", async () => {
+    const student = s.students[2];
+    const outcome = await submitAttendance(s.school.id, s.teacher.id, "Teacher", [
+      {
+        ...tap(student.id, "present", "2026-09-08T08:05:00Z"),
+        onDate: "2026-09-08",
+        // "hacked" is not a check the app knows; it must not reach the row.
+        checks: ["uniform", "id", "uniform", "hacked"],
+      },
+    ]);
+    expect(outcome.accepted).toHaveLength(1);
+
+    const [row] = await withTenant(s.school.id, (tx) =>
+      tx
+        .select()
+        .from(attendanceRecords)
+        .where(
+          and(
+            eq(attendanceRecords.studentId, student.id),
+            eq(attendanceRecords.onDate, "2026-09-08"),
+          ),
+        ),
+    );
+    expect(row.checks).toEqual(["uniform", "id"]);
+  });
+
+  it("stores no checks when the teacher ticked none", async () => {
+    const student = s.students[1];
+    await submitAttendance(s.school.id, s.teacher.id, "Teacher", [
+      { ...tap(student.id, "present", "2026-09-09T08:05:00Z"), onDate: "2026-09-09" },
+    ]);
+    const [row] = await withTenant(s.school.id, (tx) =>
+      tx
+        .select()
+        .from(attendanceRecords)
+        .where(
+          and(
+            eq(attendanceRecords.studentId, student.id),
+            eq(attendanceRecords.onDate, "2026-09-09"),
+          ),
+        ),
+    );
+    expect(row.checks).toBeNull();
+  });
+
   it("pauses alerts while a school is suspended", async () => {
     await withPlatform((tx) =>
       tx.update(schools).set({ status: "suspended" }).where(eq(schools.id, s.school.id)),
