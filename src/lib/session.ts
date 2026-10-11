@@ -18,9 +18,10 @@ function newSessionId() {
 /**
  * Without `remember`, the cookie is left to expire with the browser, so a
  * shared computer in the library does not stay signed in. The row still gets
- * an expiry, since a cookie's lifetime is the browser's to honour.
+ * an expiry, since a cookie's lifetime is the browser's to honour. Only the
+ * login form, where the person is shown the choice, asks to be remembered.
  */
-export async function createSchoolSession(userId: string, schoolId: string, remember = true) {
+export async function createSchoolSession(userId: string, schoolId: string, remember = false) {
   const id = newSessionId();
   const expiresAt = new Date(Date.now() + (remember ? REMEMBERED_DAYS : DAYS) * 86_400_000);
   // In the school's own database when it has one: the row points at the user.
