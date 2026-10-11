@@ -43,7 +43,7 @@ export function AddTeacherForm({ subdomain, root }: { subdomain: string; root: s
         </Field>
         <Field
           label="Email"
-          hint="Their sign-in. Filled in from the name and your school's address; use their own email to have the invite sent to them."
+          hint="Their sign-in. The guess from their name is not a real mailbox, so no invite or password reset can reach it — put their own address here if they have one. They can also correct it when they accept."
         >
           <Input
             ref={email}
