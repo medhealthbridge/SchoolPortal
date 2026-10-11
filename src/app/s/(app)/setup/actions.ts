@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { and, count, eq, ne } from "drizzle-orm";
+import { z } from "zod";
 import { withTenant } from "@/db";
 import { guessGroup } from "@/modules/grades/deped";
 import { schools } from "@/db/schema";
@@ -390,10 +391,18 @@ export async function inviteStaff(_prev: ActionResult, form: FormData): Promise<
   };
 }
 
-export async function acceptInvite(token: string, name: string, password: string) {
+/**
+ * `email` lets the teacher put their own address in place of the one the
+ * school guessed from their name, which is usually not a real mailbox: it is
+ * their sign-in, and the only way a password reset can ever reach them.
+ */
+export async function acceptInvite(token: string, name: string, password: string, email?: string) {
   const school = await (await import("@/lib/session")).currentSchool();
   if (!school) return { error: "Unknown school." };
   if (password.length < 8) return { error: "Use a password of at least 8 characters." };
+  const chosen = (email ?? "").trim().toLowerCase();
+  if (chosen && !z.string().email().safeParse(chosen).success)
+    return { error: "Check the email address." };
 
   return withTenant(school.id, async (tx) => {
     const [invite] = await tx
@@ -406,12 +415,25 @@ export async function acceptInvite(token: string, name: string, password: string
     // Someone who already has an account here (a parent who is also joining
     // as a teacher, say) keeps it and its password; the invite only adds the
     // role. The password typed here is not used for them, and saying "account
-    // created" would send them to sign in with the wrong one.
+    // created" would send them to sign in with the wrong one. This is keyed on
+    // the invited address, which the school chose, never on a typed one.
     const [existing] = await tx
       .select()
       .from(users)
       .where(and(eq(users.schoolId, school.id), eq(users.email, invite.email)))
       .limit(1);
+
+    // A typed address that is someone else's would take over their sign-in.
+    const signIn = chosen || invite.email;
+    if (!existing && signIn !== invite.email) {
+      const [taken] = await tx
+        .select({ id: users.id })
+        .from(users)
+        .where(and(eq(users.schoolId, school.id), eq(users.email, signIn)))
+        .limit(1);
+      if (taken)
+        return { error: "That email already signs in here. Use another, or ask your school office." };
+    }
 
     const user =
       existing ??
@@ -420,7 +442,7 @@ export async function acceptInvite(token: string, name: string, password: string
           .insert(users)
           .values({
             schoolId: school.id,
-            email: invite.email,
+            email: signIn,
             name: name || invite.name,
             passwordHash: await hashPassword(password),
             status: "active",
@@ -445,7 +467,7 @@ export async function acceptInvite(token: string, name: string, password: string
     return {
       ok: existing
         ? `You already have an account as ${existing.email}; the new role is added to it. Sign in with your existing password.`
-        : "Account created.",
+        : `Account created. Sign in with ${signIn}.`,
       userId: user.id,
     };
   });
