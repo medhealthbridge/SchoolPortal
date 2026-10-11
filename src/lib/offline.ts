@@ -67,6 +67,21 @@ export const queue = {
     const all = await queue.all();
     return all.filter((r) => r.slotId === slotId && r.onDate === onDate).length;
   },
+  /**
+   * Saves one student's mark, dropping any earlier tap for them in the same
+   * class that has not gone up yet. Each tap keeps a new id, so the server
+   * still treats it as a fresh record rather than a retry to ignore.
+   */
+  async replaceFor(record: QueuedRecord) {
+    const stale = (await queue.all()).filter(
+      (r) =>
+        r.slotId === record.slotId &&
+        r.onDate === record.onDate &&
+        r.studentId === record.studentId,
+    );
+    if (stale.length > 0) await queue.remove(stale.map((r) => r.id));
+    await queue.put(record);
+  },
 };
 
 export const localCache = {
