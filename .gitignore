@@ -1,0 +1,15 @@
+node_modules
+.next
+out
+.env.local
+.env*.local
+*.tsbuildinfo
+next-env.d.ts
+.vercel
+
+# smoke-test output
+/attendance.png
+/modules.png
+
+# uploads written by the local storage driver
+/.uploads
