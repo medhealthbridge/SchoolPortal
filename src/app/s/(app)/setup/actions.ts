@@ -68,8 +68,8 @@ export async function createSchoolYear(_prev: ActionResult, form: FormData): Pro
 export async function addSection(_prev: ActionResult, form: FormData): Promise<ActionResult> {
   const { school, session } = await requirePermission("sections.manage");
   const level = String(form.get("level") ?? "").trim();
-  const name = String(form.get("name") ?? "").trim();
-  if (!level || !name) return { error: "A section needs a level and a name." };
+  let name = String(form.get("name") ?? "").trim();
+  if (!level) return { error: "A section needs a level." };
 
   const result = await withTenant(school.id, async (tx) => {
     const [year] = await tx
@@ -78,6 +78,14 @@ export async function addSection(_prev: ActionResult, form: FormData): Promise<A
       .where(and(eq(schoolYears.schoolId, school.id), eq(schoolYears.isCurrent, true)))
       .limit(1);
     if (!year) return { error: "Set the current school year first." };
+
+    if (!name) {
+      const existing = await tx
+        .select()
+        .from(sections)
+        .where(and(eq(sections.schoolId, school.id), eq(sections.schoolYearId, year.id), eq(sections.level, level)));
+      name = `Section ${String.fromCharCode(65 + existing.length)}`;
+    }
 
     const [mainBranch] = await tx
       .select()
@@ -114,6 +122,62 @@ export async function addSection(_prev: ActionResult, form: FormData): Promise<A
   return result;
 }
 
+export async function updateSection(_prev: ActionResult, form: FormData): Promise<ActionResult> {
+  const { school, session } = await requirePermission("sections.manage");
+  const id = String(form.get("id") ?? "");
+  const level = String(form.get("level") ?? "").trim();
+  const name = String(form.get("name") ?? "").trim();
+  if (!id || !level) return { error: "A section needs a level." };
+
+  await withTenant(school.id, async (tx) => {
+    const [row] = await tx
+      .select()
+      .from(sections)
+      .where(and(eq(sections.schoolId, school.id), eq(sections.id, id)))
+      .limit(1);
+    if (!row) return;
+    const next = { level, name: name || row.name };
+    await tx.update(sections).set(next).where(eq(sections.id, id));
+    await audit(tx, {
+      schoolId: school.id,
+      actorUserId: session.userId,
+      actorLabel: session.name,
+      action: "section.updated",
+      entity: "sections",
+      entityId: id,
+      before: { level: row.level, name: row.name },
+      after: next,
+    });
+  });
+  revalidatePath("/setup");
+  return { ok: `${level} ${name} saved.` };
+}
+
+export async function deleteSection(_prev: ActionResult, form: FormData): Promise<ActionResult> {
+  const { school, session } = await requirePermission("sections.manage");
+  const id = String(form.get("id") ?? "");
+  await withTenant(school.id, async (tx) => {
+    const [row] = await tx
+      .select()
+      .from(sections)
+      .where(and(eq(sections.schoolId, school.id), eq(sections.id, id)))
+      .limit(1);
+    if (!row) return;
+    await tx.delete(sections).where(eq(sections.id, id));
+    await audit(tx, {
+      schoolId: school.id,
+      actorUserId: session.userId,
+      actorLabel: session.name,
+      action: "section.deleted",
+      entity: "sections",
+      entityId: id,
+      before: { level: row.level, name: row.name },
+    });
+  });
+  revalidatePath("/setup");
+  return { ok: "Section removed." };
+}
+
 export async function addSubject(_prev: ActionResult, form: FormData): Promise<ActionResult> {
   const { school } = await requirePermission("sections.manage");
   const code = String(form.get("code") ?? "").trim().toUpperCase();
@@ -129,8 +193,8 @@ export async function addSubject(_prev: ActionResult, form: FormData): Promise<A
 export async function addRoom(_prev: ActionResult, form: FormData): Promise<ActionResult> {
   const { school } = await requirePermission("sections.manage");
   const name = String(form.get("name") ?? "").trim();
-  const rowCount = Number(form.get("rows") ?? 5);
-  const colCount = Number(form.get("cols") ?? 6);
+  const rowCount = Math.min(12, Math.max(1, Number(form.get("rows") ?? 5)));
+  const colCount = Math.min(12, Math.max(1, Number(form.get("cols") ?? 6)));
   if (!name) return { error: "A room needs a name." };
   await withTenant(school.id, (tx) =>
     tx
@@ -139,7 +203,63 @@ export async function addRoom(_prev: ActionResult, form: FormData): Promise<Acti
       .onConflictDoNothing(),
   );
   revalidatePath("/setup");
-  return { ok: `${name} added.` };
+  return { ok: `${name} added (${rowCount}×${colCount} = ${rowCount * colCount} seats).` };
+}
+
+export async function updateRoom(_prev: ActionResult, form: FormData): Promise<ActionResult> {
+  const { school, session } = await requirePermission("sections.manage");
+  const id = String(form.get("id") ?? "");
+  const name = String(form.get("name") ?? "").trim();
+  const rowCount = Math.min(12, Math.max(1, Number(form.get("rows") ?? 5)));
+  const colCount = Math.min(12, Math.max(1, Number(form.get("cols") ?? 6)));
+  if (!id || !name) return { error: "A room needs a name." };
+
+  await withTenant(school.id, async (tx) => {
+    const [row] = await tx
+      .select()
+      .from(rooms)
+      .where(and(eq(rooms.schoolId, school.id), eq(rooms.id, id)))
+      .limit(1);
+    if (!row) return;
+    await tx.update(rooms).set({ name, rows: rowCount, cols: colCount }).where(eq(rooms.id, id));
+    await audit(tx, {
+      schoolId: school.id,
+      actorUserId: session.userId,
+      actorLabel: session.name,
+      action: "room.updated",
+      entity: "rooms",
+      entityId: id,
+      before: { name: row.name, rows: row.rows, cols: row.cols },
+      after: { name, rows: rowCount, cols: colCount },
+    });
+  });
+  revalidatePath("/setup");
+  return { ok: `${name} saved (${rowCount}×${colCount} = ${rowCount * colCount} seats).` };
+}
+
+export async function deleteRoom(_prev: ActionResult, form: FormData): Promise<ActionResult> {
+  const { school, session } = await requirePermission("sections.manage");
+  const id = String(form.get("id") ?? "");
+  await withTenant(school.id, async (tx) => {
+    const [row] = await tx
+      .select()
+      .from(rooms)
+      .where(and(eq(rooms.schoolId, school.id), eq(rooms.id, id)))
+      .limit(1);
+    if (!row) return;
+    await tx.delete(rooms).where(eq(rooms.id, id));
+    await audit(tx, {
+      schoolId: school.id,
+      actorUserId: session.userId,
+      actorLabel: session.name,
+      action: "room.deleted",
+      entity: "rooms",
+      entityId: id,
+      before: { name: row.name },
+    });
+  });
+  revalidatePath("/setup");
+  return { ok: "Room removed." };
 }
 
 export async function saveSeatPlan(

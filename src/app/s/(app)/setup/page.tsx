@@ -20,9 +20,13 @@ import {
   addSection,
   addSubject,
   createSchoolYear,
+  deleteRoom,
+  deleteSection,
   saveLogo,
   savePrivacy,
   saveProfile,
+  updateRoom,
+  updateSection,
 } from "./actions";
 import { noticeOf } from "@/lib/privacy";
 import { BrandColorField } from "./brand-color";
@@ -313,15 +317,34 @@ export default async function SetupPage() {
             <Field label="Level">
               <Input name="level" placeholder="Grade 7" required />
             </Field>
-            <Field label="Name">
-              <Input name="name" placeholder="Sampaguita" required />
+            <Field label="Name" hint="Leave blank to auto-name (Section A, B, C…)">
+              <Input name="name" placeholder="Sampaguita" />
             </Field>
           </ActionForm>
           {data.sections.length > 0 && (
-            <ul className="mt-4 flex flex-wrap gap-2">
+            <ul className="mt-4 divide-y divide-line">
               {data.sections.map((s) => (
-                <li key={s.id} className="rounded-[var(--r-pill)] border border-line bg-subtle px-2.5 py-0.5 text-xs font-medium">
-                  {s.level} {s.name}
+                <li key={s.id} className="py-2">
+                  <details className="group">
+                    <summary className="flex cursor-pointer items-center gap-2 text-sm font-medium">
+                      <span>{s.level} — {s.name}</span>
+                      <span className="ml-auto text-xs text-muted group-open:hidden">Edit</span>
+                    </summary>
+                    <div className="mt-2 rounded-control border border-line bg-subtle p-3">
+                      <ActionForm action={updateSection} submitLabel="Save" className="grid gap-3 sm:grid-cols-2">
+                        <input type="hidden" name="id" value={s.id} />
+                        <Field label="Level">
+                          <Input name="level" defaultValue={s.level} required />
+                        </Field>
+                        <Field label="Name">
+                          <Input name="name" defaultValue={s.name} />
+                        </Field>
+                      </ActionForm>
+                      <ActionForm action={deleteSection} submitLabel="Delete section" className="mt-2" destructive>
+                        <input type="hidden" name="id" value={s.id} />
+                      </ActionForm>
+                    </div>
+                  </details>
                 </li>
               ))}
             </ul>
@@ -348,25 +371,50 @@ export default async function SetupPage() {
           )}
         </Section>
 
-        <Section id="rooms" title="Rooms" subtitle="The grid is the seat plan's shape.">
+        <Section id="rooms" title="Rooms" subtitle="Rows × columns = the seat plan's shape.">
           <ActionForm action={addRoom} submitLabel="Add room">
             <Field label="Name">
               <Input name="name" placeholder="Room 201" required />
             </Field>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field label="Rows">
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Rows" hint="Front to back">
                 <Input type="number" name="rows" defaultValue={5} min={1} max={12} />
               </Field>
-              <Field label="Columns">
+              <Field label="Columns" hint="Left to right">
                 <Input type="number" name="cols" defaultValue={6} min={1} max={12} />
               </Field>
             </div>
           </ActionForm>
           {data.rooms.length > 0 && (
-            <ul className="mt-4 flex flex-wrap gap-2">
+            <ul className="mt-4 divide-y divide-line">
               {data.rooms.map((r) => (
-                <li key={r.id} className="rounded-[var(--r-pill)] border border-line bg-subtle px-2.5 py-0.5 text-xs font-medium">
-                  {r.name}, {r.rows}×{r.cols}
+                <li key={r.id} className="py-2">
+                  <details className="group">
+                    <summary className="flex cursor-pointer items-center gap-2 text-sm font-medium">
+                      <span>{r.name}</span>
+                      <span className="text-xs text-muted">{r.rows}×{r.cols} = {r.rows * r.cols} seats</span>
+                      <span className="ml-auto text-xs text-muted group-open:hidden">Edit</span>
+                    </summary>
+                    <div className="mt-2 rounded-control border border-line bg-subtle p-3">
+                      <ActionForm action={updateRoom} submitLabel="Save" className="grid gap-3">
+                        <input type="hidden" name="id" value={r.id} />
+                        <Field label="Name">
+                          <Input name="name" defaultValue={r.name} required />
+                        </Field>
+                        <div className="grid grid-cols-2 gap-4">
+                          <Field label="Rows">
+                            <Input type="number" name="rows" defaultValue={r.rows} min={1} max={12} />
+                          </Field>
+                          <Field label="Columns">
+                            <Input type="number" name="cols" defaultValue={r.cols} min={1} max={12} />
+                          </Field>
+                        </div>
+                      </ActionForm>
+                      <ActionForm action={deleteRoom} submitLabel="Delete room" className="mt-2" destructive>
+                        <input type="hidden" name="id" value={r.id} />
+                      </ActionForm>
+                    </div>
+                  </details>
                 </li>
               ))}
             </ul>
