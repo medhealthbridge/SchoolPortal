@@ -99,7 +99,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "portal.post",
     "discipline.report",
     "discipline.manage",
-    "guidance.manage",
+    // Not guidance.manage: counselling cases stay with the guidance office.
     "sao.manage",
     "chaplain.manage",
     "registrar.manage",
