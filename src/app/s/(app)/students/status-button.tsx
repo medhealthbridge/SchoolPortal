@@ -5,7 +5,17 @@ import { Button } from "@/components/ui";
 import { showToast } from "@/components/toast";
 import { restoreStudent, withdrawStudent } from "./actions";
 
-export function StatusButton({ id, name, withdrawn }: { id: string; name: string; withdrawn: boolean }) {
+export function StatusButton({
+  id,
+  name,
+  withdrawn,
+  size = "sm",
+}: {
+  id: string;
+  name: string;
+  withdrawn: boolean;
+  size?: "sm" | "md";
+}) {
   const [pending, start] = useTransition();
 
   function run() {
@@ -15,8 +25,11 @@ export function StatusButton({ id, name, withdrawn }: { id: string; name: string
     form.set("id", id);
     start(async () => {
       try {
-        await (withdrawn ? restoreStudent : withdrawStudent)(form);
-        showToast(withdrawn ? `${name} restored.` : `${name} withdrawn.`);
+        // What the server did, not what we asked for: a second tap on a roster
+        // someone else already changed must not claim it worked.
+        const result = await (withdrawn ? restoreStudent : withdrawStudent)(form);
+        if (result?.error) showToast(result.error, "danger");
+        else if (result?.ok) showToast(result.ok);
       } catch {
         showToast("That did not go through. Try again.", "danger");
       }
@@ -26,8 +39,8 @@ export function StatusButton({ id, name, withdrawn }: { id: string; name: string
   return (
     <Button
       type="button"
-      variant="ghost"
-      size="sm"
+      variant={withdrawn ? "secondary" : "ghost"}
+      size={size}
       disabled={pending}
       onClick={run}
       className={withdrawn ? undefined : "text-danger"}

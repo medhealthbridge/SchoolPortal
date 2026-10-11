@@ -29,12 +29,13 @@ export function Toaster() {
     };
   }, []);
 
-  if (items.length === 0) return null;
+  // Always rendered, even empty: a live region inserted together with its text
+  // is commonly missed, so the region has to be there before the text arrives.
   return (
     <div
       role="status"
       aria-live="polite"
-      className="pointer-events-none fixed inset-x-4 bottom-20 z-50 flex flex-col items-center gap-2 lg:bottom-6"
+      className="pointer-events-none fixed inset-x-4 bottom-20 z-50 flex flex-col items-center gap-2 empty:hidden lg:bottom-6"
     >
       {items.map((i) => (
         <div
@@ -47,7 +48,7 @@ export function Toaster() {
           <button
             type="button"
             aria-label="Dismiss"
-            className="-mr-1 opacity-70 hover:opacity-100"
+            className="-my-2.5 -mr-2 flex min-h-11 min-w-11 items-center justify-center text-lg opacity-70 hover:opacity-100"
             onClick={() => setItems((all) => all.filter((x) => x.id !== i.id))}
           >
             ×

@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, count, eq, isNull, ne } from "drizzle-orm";
+import { and, count, eq, isNull, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 import { withTenant } from "@/db";
 import { guessGroup } from "@/modules/grades/deped";
@@ -97,6 +97,7 @@ export async function addSection(_prev: ActionResult, form: FormData): Promise<A
       .from(sections)
       .where(and(eq(sections.schoolId, school.id), eq(sections.schoolYearId, year.id), eq(sections.level, level)));
     const taken = new Set(existing.map((s) => s.name.toLowerCase()));
+    const typed = name;
     if (!name) {
       let n = 0;
       while (taken.has(`section ${letters(n)}`.toLowerCase())) n++;
@@ -111,17 +112,29 @@ export async function addSection(_prev: ActionResult, form: FormData): Promise<A
       .where(eq(branches.schoolId, school.id))
       .limit(1);
 
-    const [row] = await tx
-      .insert(sections)
-      .values({
-        schoolId: school.id,
-        branchId: mainBranch?.id ?? null,
-        schoolYearId: year.id,
-        level,
-        name,
-      })
-      .onConflictDoNothing()
-      .returning();
+    // Two adds at once (or a double tap on a slow phone) both pick the same
+    // letter; the loser takes the next one rather than reporting a clash over
+    // a name nobody typed.
+    const auto = !typed;
+    let row;
+    for (let tries = 0; !row && tries < 26; tries++) {
+      [row] = await tx
+        .insert(sections)
+        .values({
+          schoolId: school.id,
+          branchId: mainBranch?.id ?? null,
+          schoolYearId: year.id,
+          level,
+          name,
+        })
+        .onConflictDoNothing()
+        .returning();
+      if (row || !auto) break;
+      taken.add(name.toLowerCase());
+      let n = 0;
+      while (taken.has(`section ${letters(n)}`.toLowerCase())) n++;
+      name = `Section ${letters(n)}`;
+    }
     if (!row) return { error: `${level} already has a section called ${name}.` };
     await audit(tx, {
       schoolId: school.id,
@@ -154,14 +167,15 @@ export async function updateSection(_prev: ActionResult, form: FormData): Promis
       .limit(1);
     if (!row) return { error: "That section is no longer on file." };
     const next = { level, name: name || row.name };
+    // Case-insensitive, to match what adding a section refuses.
     const [twin] = await tx
       .select({ id: sections.id })
       .from(sections)
       .where(
         and(
           eq(sections.schoolYearId, row.schoolYearId),
-          eq(sections.level, next.level),
-          eq(sections.name, next.name),
+          sql`lower(${sections.level}) = lower(${next.level})`,
+          sql`lower(${sections.name}) = lower(${next.name})`,
           ne(sections.id, id),
         ),
       )
@@ -275,7 +289,9 @@ export async function updateRoom(_prev: ActionResult, form: FormData): Promise<A
     const [twin] = await tx
       .select({ id: rooms.id })
       .from(rooms)
-      .where(and(eq(rooms.schoolId, school.id), eq(rooms.name, name), ne(rooms.id, id)))
+      .where(
+        and(eq(rooms.schoolId, school.id), sql`lower(${rooms.name}) = lower(${name})`, ne(rooms.id, id)),
+      )
       .limit(1);
     if (twin) return { error: `There is already a room called ${name}.` };
     await tx.update(rooms).set({ name, rows: rowCount, cols: colCount }).where(eq(rooms.id, id));
@@ -295,7 +311,11 @@ export async function updateRoom(_prev: ActionResult, form: FormData): Promise<A
   return result;
 }
 
-/** A room in the schedule or with a seat plan is refused: deleting would drop both. */
+/**
+ * A room with a seat plan is refused, since that plan would go with it. A room
+ * merely named in the schedule is not: those slots keep their class and only
+ * lose the room, so nothing is lost.
+ */
 export async function deleteRoom(_prev: ActionResult, form: FormData): Promise<ActionResult> {
   const { school, session } = await requirePermission("sections.manage");
   const id = String(form.get("id") ?? "");
@@ -306,15 +326,13 @@ export async function deleteRoom(_prev: ActionResult, form: FormData): Promise<A
       .where(and(eq(rooms.schoolId, school.id), eq(rooms.id, id)))
       .limit(1);
     if (!row) return { error: "That room is no longer on file." };
-    const used = await Promise.all(
-      [timetableSlots, seatPlans].map(async (t) => {
-        const [r] = await tx.select({ n: count() }).from(t).where(eq(t.roomId, id));
-        return Number(r?.n ?? 0);
-      }),
-    );
-    if (used.some((n) => n > 0))
+    const [plans] = await tx
+      .select({ n: count() })
+      .from(seatPlans)
+      .where(eq(seatPlans.roomId, id));
+    if (Number(plans?.n ?? 0) > 0)
       return {
-        error: `${row.name} is in the class schedule or has a seat plan, so it cannot be deleted. Rename it instead.`,
+        error: `${row.name} has a seat plan, so it cannot be deleted. Rename it instead.`,
       };
     await tx.delete(rooms).where(eq(rooms.id, id));
     await audit(tx, {
