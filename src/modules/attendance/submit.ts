@@ -2,6 +2,7 @@ import { and, count, eq } from "drizzle-orm";
 import { withTenant } from "@/db";
 import { attendanceRecords, enrollments, timetableSlots } from "@/db/schema";
 import { audit, emit } from "@/lib/audit";
+import { isCheckKey } from "@/lib/checks";
 import { absenceStreak } from "./queries";
 
 export type IncomingRecord = {
@@ -11,6 +12,8 @@ export type IncomingRecord = {
   slotId: string;
   onDate: string;
   status: "present" | "absent" | "late" | "excused";
+  /** Uniform and grooming checks; unknown keys are dropped, not stored. */
+  checks?: string[] | null;
   note?: string | null;
   /** The phone's clock at the moment of the tap. */
   markedAt: string;
@@ -25,6 +28,12 @@ export type SubmitOutcome = {
 };
 
 const ABSENCE_STREAK_FLAG = 3;
+
+/** Only keys the app knows, deduplicated; an empty list is stored as nothing. */
+function cleanChecks(raw: string[] | null | undefined) {
+  const kept = [...new Set(raw ?? [])].filter(isCheckKey);
+  return kept.length > 0 ? kept : null;
+}
 
 /**
  * Takes a batch of taps from one teacher, offline or not.
@@ -135,6 +144,7 @@ export async function submitAttendance(
         slotId: rec.slotId,
         onDate: rec.onDate,
         status: rec.status,
+        checks: cleanChecks(rec.checks),
         note: rec.note ?? null,
         markedByUserId: teacherUserId,
         markedAt,

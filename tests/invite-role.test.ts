@@ -9,6 +9,12 @@ const made: string[] = [];
 let current: { school: unknown; session: unknown } | null = null;
 vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
 vi.mock("@/lib/guard", () => ({ requirePermission: async () => current }));
+// acceptInvite reads the school from the request's headers, which a unit test
+// has none of; everything else in the module stays real.
+vi.mock("@/lib/session", async (actual) => ({
+  ...(await actual<typeof import("@/lib/session")>()),
+  currentSchool: async () => current?.school ?? null,
+}));
 
 afterAll(async () => {
   for (const id of made) await dropSchool(id);

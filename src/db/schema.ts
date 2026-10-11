@@ -469,6 +469,8 @@ export const attendanceRecords = pgTable(
       .references(() => timetableSlots.id, { onDelete: "cascade" }),
     onDate: date("on_date").notNull(),
     status: attendanceStatus("status").notNull(),
+    /** Uniform and grooming checks seen at this class; see lib/checks.ts. */
+    checks: text("checks").array(),
     note: text("note"),
     markedByUserId: uuid("marked_by_user_id")
       .notNull()

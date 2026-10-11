@@ -11,6 +11,7 @@ const recordSchema = z.object({
   slotId: z.string().uuid(),
   onDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   status: z.enum(["present", "absent", "late", "excused"]),
+  checks: z.array(z.string().max(40)).max(20).nullish(),
   note: z.string().max(500).nullish(),
   markedAt: z.string().datetime(),
 });
