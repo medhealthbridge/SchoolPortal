@@ -6,7 +6,8 @@ import { enrollments, schoolYears, sections, students } from "@/db/schema";
 import { requirePermission } from "@/lib/guard";
 import { ActionForm } from "@/components/action-form";
 import { Button, Callout, LinkButton, Meta, PageHeader, Pill, Section } from "@/components/ui";
-import { restoreStudent, updateStudent, withdrawStudent } from "../actions";
+import { updateStudent } from "../actions";
+import { StatusButton } from "../status-button";
 import { DeleteStudent } from "./delete-student";
 import { guardiansOf } from "@/lib/guardians";
 import { InviteParentForm } from "@/components/invite-parent";
@@ -196,19 +197,12 @@ export default async function StudentRecordPage({
         }
       >
         <div className="flex flex-wrap items-start gap-3">
-          {away ? (
-            <form action={restoreStudent}>
-              <input type="hidden" name="id" value={student.id} />
-              <Button type="submit">Restore student</Button>
-            </form>
-          ) : (
-            <form action={withdrawStudent}>
-              <input type="hidden" name="id" value={student.id} />
-              <Button type="submit" variant="secondary">
-                Withdraw student
-              </Button>
-            </form>
-          )}
+          <StatusButton
+            id={student.id}
+            name={`${student.firstName} ${student.lastName}`}
+            withdrawn={away}
+            size="md"
+          />
         </div>
         {!away && (
           <div className="mt-4 max-w-md">

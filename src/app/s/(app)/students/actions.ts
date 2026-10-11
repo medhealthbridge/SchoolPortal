@@ -198,16 +198,17 @@ export async function updateStudent(_prev: ActionResult, form: FormData): Promis
  * and fees stay readable. The student drops off rosters, class lists for
  * grading, invoices and announcements, which all read "active" enrolments.
  */
-export async function withdrawStudent(form: FormData) {
+export async function withdrawStudent(form: FormData): Promise<ActionResult> {
   const { school, session } = await requirePermission("students.manage");
   const id = String(form.get("id") ?? "");
-  await withTenant(school.id, async (tx) => {
+  const result = await withTenant(school.id, async (tx): Promise<ActionResult> => {
     const [row] = await tx
       .select()
       .from(students)
       .where(and(eq(students.id, id), eq(students.schoolId, school.id)))
       .limit(1);
-    if (!row || row.archivedAt) return;
+    if (!row) return { error: "That student is not on file." };
+    if (row.archivedAt) return { error: `${row.firstName} ${row.lastName} has already withdrawn.` };
     await tx.update(students).set({ archivedAt: new Date() }).where(eq(students.id, id));
     await tx
       .update(enrollments)
@@ -221,21 +222,24 @@ export async function withdrawStudent(form: FormData) {
       entity: "students",
       entityId: id,
     });
+    return { ok: `${row.firstName} ${row.lastName} withdrawn.` };
   });
   revalidatePath("/students");
   revalidatePath(`/students/${id}`);
+  return result;
 }
 
-export async function restoreStudent(form: FormData) {
+export async function restoreStudent(form: FormData): Promise<ActionResult> {
   const { school, session } = await requirePermission("students.manage");
   const id = String(form.get("id") ?? "");
-  await withTenant(school.id, async (tx) => {
+  const result = await withTenant(school.id, async (tx): Promise<ActionResult> => {
     const [row] = await tx
       .select()
       .from(students)
       .where(and(eq(students.id, id), eq(students.schoolId, school.id)))
       .limit(1);
-    if (!row || !row.archivedAt) return;
+    if (!row) return { error: "That student is not on file." };
+    if (!row.archivedAt) return { error: `${row.firstName} ${row.lastName} is already enrolled.` };
     await tx.update(students).set({ archivedAt: null }).where(eq(students.id, id));
     await tx
       .update(enrollments)
@@ -249,9 +253,11 @@ export async function restoreStudent(form: FormData) {
       entity: "students",
       entityId: id,
     });
+    return { ok: `${row.firstName} ${row.lastName} restored.` };
   });
   revalidatePath("/students");
   revalidatePath(`/students/${id}`);
+  return result;
 }
 
 /**

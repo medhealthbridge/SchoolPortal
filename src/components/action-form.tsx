@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useCallback } from "react";
 import { Button, Callout } from "./ui";
 import { showToast } from "./toast";
 
@@ -23,12 +23,18 @@ export function ActionForm({
   /** Asked before submitting; cancelling sends nothing. */
   confirm?: string;
 }) {
-  const [state, dispatch, pending] = useActionState<ActionResult, FormData>(action, null);
-
-  // Every submission returns a fresh object, so a repeated "Saved." still toasts.
-  useEffect(() => {
-    if (state?.ok) showToast(state.ok);
-  }, [state]);
+  // Toasting here rather than from an effect: a delete removes this very form
+  // in the same commit as its result, and an effect on a gone component never
+  // runs, so the row would vanish with nothing said.
+  const run = useCallback(
+    async (prev: ActionResult, form: FormData) => {
+      const result = await action(prev, form);
+      if (result?.ok) showToast(result.ok);
+      return result;
+    },
+    [action],
+  );
+  const [state, dispatch, pending] = useActionState<ActionResult, FormData>(run, null);
 
   const long = Boolean(state?.ok && state.ok.length > 80);
 
