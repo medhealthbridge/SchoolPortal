@@ -17,7 +17,7 @@ import {
   Section,
   Table,
 } from "@/components/ui";
-import { addStudent, importStudents } from "./actions";
+import { addStudent, importStudents, withdrawStudent, restoreStudent } from "./actions";
 import { StudentFields } from "./fields";
 import { ExportPanel } from "@/components/export-panel";
 
@@ -201,8 +201,9 @@ export default async function StudentsPage({
               "Section",
               "Account",
               ...(canSeeCodes && !withdrawn ? ["Activation code", "Parent code"] : []),
+              ...(canManage ? ["Actions"] : []),
             ]}
-            minWidth={canSeeCodes && !withdrawn ? 760 : 520}
+            minWidth={canManage ? 820 : canSeeCodes && !withdrawn ? 760 : 520}
           >
             {rows.map((r) => (
               <tr key={r.id}>
@@ -232,6 +233,30 @@ export default async function StudentsPage({
                     </td>
                     <td className="font-mono tracking-[0.06em]">{r.parentCode}</td>
                   </>
+                )}
+                {canManage && (
+                  <td>
+                    <div className="flex items-center gap-1">
+                      <LinkButton href={`/students/${r.id}`} variant="ghost" size="sm">
+                        Edit
+                      </LinkButton>
+                      {r.archivedAt ? (
+                        <form action={restoreStudent}>
+                          <input type="hidden" name="id" value={r.id} />
+                          <Button type="submit" variant="ghost" size="sm">
+                            Restore
+                          </Button>
+                        </form>
+                      ) : (
+                        <form action={withdrawStudent}>
+                          <input type="hidden" name="id" value={r.id} />
+                          <Button type="submit" variant="ghost" size="sm" className="text-danger">
+                            Withdraw
+                          </Button>
+                        </form>
+                      )}
+                    </div>
+                  </td>
                 )}
               </tr>
             ))}
