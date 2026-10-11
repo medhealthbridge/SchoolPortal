@@ -3,6 +3,7 @@
 import { withTenant } from "@/db";
 import { accountFor, issueReset, SELF_HOURS, useReset } from "@/lib/password-reset";
 import { deliver } from "@/lib/messaging";
+import { emailTemplates } from "@/lib/email-template";
 import { schoolUrl } from "@/lib/school-url";
 import { currentSchool, endSessionsOf } from "@/lib/session";
 import { attempt, retryMessage, SIGNUP } from "@/lib/throttle";
@@ -30,12 +31,14 @@ export async function requestReset(_prev: Result, form: FormData): Promise<Resul
     return { email: user.email, token };
   });
   if (sent) {
+    const resetUrl = schoolUrl(school.subdomain, `/reset/${sent.token}`);
     await deliver({
       schoolId: school.id,
       channel: "email",
       to: sent.email,
       subject: `Set a new password for ${school.name}`,
-      body: `Someone asked to reset your SchoolPortal password. If it was you, open ${schoolUrl(school.subdomain, `/reset/${sent.token}`)} within an hour. If it was not, ignore this email.`,
+      body: `Someone asked to reset your SchoolPortal password. If it was you, open ${resetUrl} within an hour. If it was not, ignore this email.`,
+      html: emailTemplates.passwordReset({ name: school.name }, resetUrl),
     });
   }
   return {

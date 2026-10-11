@@ -5,6 +5,7 @@ import { monthlyInvoice } from "./pricing";
 import type { ModuleKey } from "./modules";
 import { audit } from "./audit";
 import { deliver } from "./messaging";
+import { emailTemplates } from "./email-template";
 
 /** Students with an active enrollment in the current school year. */
 export async function activeStudentCount(schoolId: string) {
@@ -95,12 +96,15 @@ export async function issueInvoices(period: string, dueInDays = 15) {
       });
     });
 
+    const totalPhp = (lines.totalCentavos / 100).toFixed(2);
+    const dueDate = dueOn.toISOString().slice(0, 10);
     await deliver({
       schoolId: school.id,
       channel: "email",
       to: school.ownerEmail,
       subject: `Invoice for ${period}`,
-      body: `${school.name}: ${studentCount} active students. Total due ${(lines.totalCentavos / 100).toFixed(2)} PHP by ${dueOn.toISOString().slice(0, 10)}.`,
+      body: `${school.name}: ${studentCount} active students. Total due ${totalPhp} PHP by ${dueDate}.`,
+      html: emailTemplates.invoice({ name: school.name }, period, studentCount, totalPhp, dueDate),
     });
 
     issued.push({ schoolId: school.id, period, totalCentavos: lines.totalCentavos });

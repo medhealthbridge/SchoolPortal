@@ -8,6 +8,7 @@ import { audit } from "@/lib/audit";
 import { approveApplication, declineApplication } from "@/lib/enrolment";
 import { requirePermission } from "@/lib/guard";
 import { deliver } from "@/lib/messaging";
+import { emailTemplates } from "@/lib/email-template";
 import { schoolUrl } from "@/lib/school-url";
 
 export type DecideResult = { ok?: string; error?: string } | null;
@@ -37,10 +38,19 @@ export async function approve(_prev: DecideResult, form: FormData): Promise<Deci
   if ("error" in outcome) return { error: outcome.error };
 
   const { app, student, section } = outcome;
-  const text = `${school.name}: ${student.firstName} ${student.lastName} is enrolled in ${section.level} ${section.name} (ref ${app.reference}). To follow grades and attendance, sign up as a parent at ${schoolUrl(school.subdomain, "/signup")} with student ID ${student.studentNumber} and parent code ${student.parentCode}.`;
+  const signupUrl = schoolUrl(school.subdomain, "/signup");
+  const text = `${school.name}: ${student.firstName} ${student.lastName} is enrolled in ${section.level} ${section.name} (ref ${app.reference}). To follow grades and attendance, sign up as a parent at ${signupUrl} with student ID ${student.studentNumber} and parent code ${student.parentCode}.`;
   await deliver({ schoolId: school.id, channel: "sms", to: app.guardianPhone, body: text });
   if (app.guardianEmail)
-    await deliver({ schoolId: school.id, channel: "email", to: app.guardianEmail, subject: `Enrolled: ${student.firstName} ${student.lastName}`, body: text });
+    await deliver({
+      schoolId: school.id, channel: "email", to: app.guardianEmail,
+      subject: `Enrolled: ${student.firstName} ${student.lastName}`, body: text,
+      html: emailTemplates.applicationApproved(
+        { name: school.name },
+        { firstName: student.firstName, lastName: student.lastName, studentNumber: student.studentNumber, parentCode: student.parentCode },
+        `${section.level} ${section.name}`, app.reference, signupUrl,
+      ),
+    });
   // No revalidate: the card stays where it is, showing what happened, rather
   // than vanishing from the waiting list mid-read. The list updates on the next visit.
   return { ok: `${student.firstName} ${student.lastName} is enrolled in ${section.level} ${section.name}. The family was sent the parent code.` };
@@ -70,10 +80,15 @@ export async function decline(_prev: DecideResult, form: FormData): Promise<Deci
   });
   if (!app) return { error: "That application was already decided." };
   const l = app.learner as Record<string, string>;
-  const text = `${school.name}: the application for ${l.first_name} ${l.last_name} (ref ${app.reference}) was not approved. ${note}`;
+  const learner = `${l.first_name} ${l.last_name}`;
+  const text = `${school.name}: the application for ${learner} (ref ${app.reference}) was not approved. ${note}`;
   await deliver({ schoolId: school.id, channel: "sms", to: app.guardianPhone, body: text });
   if (app.guardianEmail)
-    await deliver({ schoolId: school.id, channel: "email", to: app.guardianEmail, subject: "About your enrolment application", body: text });
+    await deliver({
+      schoolId: school.id, channel: "email", to: app.guardianEmail,
+      subject: "About your enrolment application", body: text,
+      html: emailTemplates.applicationDeclined({ name: school.name }, learner, app.reference, note),
+    });
   return { ok: "Declined. The family was told why." };
 }
 

@@ -10,6 +10,7 @@ import { endSessionsOf } from "@/lib/session";
 import { requirePermission } from "@/lib/guard";
 import { audit } from "@/lib/audit";
 import { deliver } from "@/lib/messaging";
+import { emailTemplates } from "@/lib/email-template";
 import { schoolUrl } from "@/lib/school-url";
 import { TEACHING_ROLES } from "@/lib/staff";
 
@@ -68,12 +69,14 @@ export async function addTeacher(_prev: ActionResult, form: FormData): Promise<A
   });
   if ("error" in outcome) return { error: outcome.error };
 
+  const inviteUrl = schoolUrl(school.subdomain, `/invite/${token}`);
   await deliver({
     schoolId: school.id,
     channel: "email",
     to: email,
     subject: `Join ${school.name} on SchoolPortal`,
-    body: `${session.name} added you as a teacher at ${school.name}. Set your password at ${schoolUrl(school.subdomain, `/invite/${token}`)}`,
+    body: `${session.name} added you as a teacher at ${school.name}. Set your password at ${inviteUrl}`,
+    html: emailTemplates.staffInvite({ name: school.name }, session.name, role, inviteUrl),
   });
 
   revalidatePath("/teachers");
