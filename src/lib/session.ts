@@ -8,14 +8,21 @@ import type { Role } from "./roles";
 export const SCHOOL_COOKIE = "sp_session";
 export const ADMIN_COOKIE = "sp_admin";
 const DAYS = 14;
+/** "Keep me signed in" on a teacher's own phone, so a term's work needs one sign-in. */
+const REMEMBERED_DAYS = 60;
 
 function newSessionId() {
   return randomBytes(32).toString("base64url");
 }
 
-export async function createSchoolSession(userId: string, schoolId: string) {
+/**
+ * Without `remember`, the cookie is left to expire with the browser, so a
+ * shared computer in the library does not stay signed in. The row still gets
+ * an expiry, since a cookie's lifetime is the browser's to honour.
+ */
+export async function createSchoolSession(userId: string, schoolId: string, remember = true) {
   const id = newSessionId();
-  const expiresAt = new Date(Date.now() + DAYS * 86_400_000);
+  const expiresAt = new Date(Date.now() + (remember ? REMEMBERED_DAYS : DAYS) * 86_400_000);
   // In the school's own database when it has one: the row points at the user.
   await (await homeOf(schoolId)).insert(sessions).values({ id, userId, schoolId, expiresAt });
   const jar = await cookies();
@@ -24,7 +31,7 @@ export async function createSchoolSession(userId: string, schoolId: string) {
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    expires: expiresAt,
+    ...(remember ? { expires: expiresAt } : {}),
   });
   return id;
 }

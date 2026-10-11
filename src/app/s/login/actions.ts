@@ -71,7 +71,7 @@ export async function signIn(
     });
   });
 
-  await createSchoolSession(user.id, school.id);
+  await createSchoolSession(user.id, school.id, formData.get("remember") !== null);
   return goTo("/");
 }
 
