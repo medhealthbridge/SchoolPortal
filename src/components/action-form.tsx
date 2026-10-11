@@ -11,11 +11,13 @@ export function ActionForm({
   submitLabel,
   children,
   className = "grid gap-4 sm:grid-cols-2",
+  destructive,
 }: {
   action: Action;
   submitLabel: string;
   children: React.ReactNode;
   className?: string;
+  destructive?: boolean;
 }) {
   const [state, dispatch, pending] = useActionState<ActionResult, FormData>(action, null);
   return (
@@ -35,7 +37,12 @@ export function ActionForm({
       {state?.ok && <Callout tone="ok">{state.ok}</Callout>}
       <div className={className}>{children}</div>
       <div>
-        <Button type="submit" disabled={pending}>
+        <Button
+          type="submit"
+          disabled={pending}
+          variant={destructive ? "ghost" : undefined}
+          className={destructive ? "text-danger text-xs" : undefined}
+        >
           {pending ? "Saving" : submitLabel}
         </Button>
       </div>
