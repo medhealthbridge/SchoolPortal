@@ -1,6 +1,12 @@
 import Link from "next/link";
 import { MODULES, MODULE_KEYS } from "@/lib/modules";
-import { PER_STUDENT_CENTAVOS, TIER_LIST, peso, yearTotalCentavos } from "@/lib/pricing";
+import {
+  PER_STUDENT_CENTAVOS,
+  PLATFORM_FEE_CAP_CENTAVOS,
+  TIER_LIST,
+  peso,
+  yearTotalCentavos,
+} from "@/lib/pricing";
 import { LinkButton, Section, Table } from "@/components/ui";
 import { CheckIcon } from "@/components/icons";
 import SeatDemo from "./seat-demo";
@@ -70,7 +76,7 @@ export default function Home() {
         <Section
           id="pricing"
           title="What it costs"
-          subtitle={`A platform fee set by the tier, up to ${peso(10_000_000)} once every module is on, plus ${peso(PER_STUDENT_CENTAVOS)} for each active student each month. The student count is taken on the 1st.`}
+          subtitle={`A platform fee set by the tier, up to ${peso(PLATFORM_FEE_CAP_CENTAVOS)} once every module is on, plus ${peso(PER_STUDENT_CENTAVOS)} for each active student each month. The student count is taken on the 1st.`}
           flush
         >
           <Table head={["", ...TIER_LIST.map((t) => t.name)]} minWidth={680}>

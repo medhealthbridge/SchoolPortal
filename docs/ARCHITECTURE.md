@@ -304,7 +304,7 @@ Each lives in one place and is easy to change.
 
 | Decision | Taken as | Where |
 | --- | --- | --- |
-| ₱100,000 platform fee | Yearly, capped, invoiced monthly as a twelfth | `src/lib/pricing.ts` |
+| ₱80,000 platform fee | Yearly, capped, invoiced monthly as a twelfth | `src/lib/pricing.ts` |
 | ₱20 per student | Same on every tier, 12 months | `PER_STUDENT_CENTAVOS` |
 | "Pick a domain" | The school's subdomain | `src/lib/tenant.ts` |
 | Second proof at signup | An activation code, never the birthdate | `src/app/s/signup/actions.ts` |

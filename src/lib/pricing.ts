@@ -20,15 +20,25 @@ const TIER_ADDS: Record<TierKey, ModuleKey[]> = {
 
 const TIER_ORDER: TierKey[] = ["starter", "academic", "student_life", "all_in"];
 
-const TIER_FEES: Record<TierKey, number> = {
-  starter: 2_500_000,
-  academic: 5_000_000,
-  student_life: 7_000_000,
-  all_in: 10_000_000,
-};
+/**
+ * A tier costs exactly what its modules cost, so the price list and the tiers
+ * can never drift apart: change a module's price and every tier follows.
+ */
+function feeFor(upTo: number) {
+  return TIER_ORDER.slice(0, upTo + 1)
+    .flatMap((k) => TIER_ADDS[k])
+    .reduce((sum, m) => sum + MODULES[m].priceCentavos, 0);
+}
 
-/** The platform fee never goes above ₱100,000. */
-export const PLATFORM_FEE_CAP_CENTAVOS = 10_000_000;
+const TIER_FEES: Record<TierKey, number> = Object.fromEntries(
+  TIER_ORDER.map((k, i) => [k, feeFor(i)]),
+) as Record<TierKey, number>;
+
+/**
+ * The platform fee never goes above ₱80,000 — every module switched on, which
+ * is what the top tier already is.
+ */
+export const PLATFORM_FEE_CAP_CENTAVOS = TIER_FEES.all_in;
 
 /** ₱20 per active student per month. */
 export const PER_STUDENT_CENTAVOS = 2_000;
@@ -58,7 +68,7 @@ export function modulesForTier(tier: TierKey): ModuleKey[] {
 
 /**
  * A school on a lower tier can add any single module at its listed price, and
- * the platform fee is still capped at ₱100,000.
+ * the platform fee is still capped at ₱80,000.
  */
 export function platformFeeCentavos(tier: TierKey, extraModules: ModuleKey[] = []) {
   const included = new Set(modulesForTier(tier));
