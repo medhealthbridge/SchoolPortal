@@ -50,7 +50,7 @@ export const MODULES: Record<ModuleKey, ModuleDefinition> = {
     ],
     emits: ["student.enrolled", "student.transferred", "user.invited"],
     listensTo: [],
-    priceCentavos: 1_500_000,
+    priceCentavos: 1_200_000,
   },
   attendance: {
     key: "attendance",
@@ -59,7 +59,7 @@ export const MODULES: Record<ModuleKey, ModuleDefinition> = {
     owns: ["timetable_slots", "seat_plans", "attendance_records"],
     emits: ["student.marked_late", "student.marked_absent", "student.absence_streak"],
     listensTo: ["discipline.suspension_started"],
-    priceCentavos: 1_000_000,
+    priceCentavos: 800_000,
   },
   grades: {
     key: "grades",
@@ -68,7 +68,7 @@ export const MODULES: Record<ModuleKey, ModuleDefinition> = {
     owns: ["grading_periods", "scores"],
     emits: ["grade.period_closed", "student.failing"],
     listensTo: ["student.marked_absent", "sao.service_hours_logged"],
-    priceCentavos: 1_500_000,
+    priceCentavos: 1_200_000,
   },
   portal: {
     key: "portal",
@@ -77,7 +77,7 @@ export const MODULES: Record<ModuleKey, ModuleDefinition> = {
     owns: ["announcements"],
     emits: [],
     listensTo: ["student.marked_absent", "grade.period_closed", "billing.balance_changed"],
-    priceCentavos: 1_000_000,
+    priceCentavos: 800_000,
   },
   discipline: {
     key: "discipline",
@@ -86,7 +86,7 @@ export const MODULES: Record<ModuleKey, ModuleDefinition> = {
     owns: ["incidents", "offense_levels", "sanctions"],
     emits: ["discipline.suspension_started", "discipline.repeat_case"],
     listensTo: ["student.marked_late"],
-    priceCentavos: 600_000,
+    priceCentavos: 500_000,
   },
   guidance: {
     key: "guidance",
@@ -95,7 +95,7 @@ export const MODULES: Record<ModuleKey, ModuleDefinition> = {
     owns: ["guidance_cases", "case_notes", "appointments"],
     emits: [],
     listensTo: ["student.absence_streak", "student.failing", "discipline.repeat_case"],
-    priceCentavos: 600_000,
+    priceCentavos: 500_000,
   },
   registrar: {
     key: "registrar",
@@ -104,7 +104,7 @@ export const MODULES: Record<ModuleKey, ModuleDefinition> = {
     owns: ["registrar_requests"],
     emits: ["registrar.clearance_requested"],
     listensTo: ["billing.hold_placed"],
-    priceCentavos: 1_000_000,
+    priceCentavos: 800_000,
   },
   billing: {
     key: "billing",
@@ -113,7 +113,7 @@ export const MODULES: Record<ModuleKey, ModuleDefinition> = {
     owns: ["fee_items", "student_charges", "student_payments"],
     emits: ["billing.balance_changed", "billing.hold_placed"],
     listensTo: ["student.enrolled"],
-    priceCentavos: 1_500_000,
+    priceCentavos: 1_200_000,
   },
   sao: {
     key: "sao",
@@ -122,7 +122,7 @@ export const MODULES: Record<ModuleKey, ModuleDefinition> = {
     owns: ["clubs", "club_memberships", "activities", "service_hours"],
     emits: ["sao.service_hours_logged"],
     listensTo: [],
-    priceCentavos: 500_000,
+    priceCentavos: 400_000,
   },
   chaplain: {
     key: "chaplain",
@@ -131,7 +131,7 @@ export const MODULES: Record<ModuleKey, ModuleDefinition> = {
     owns: ["activities", "service_hours"],
     emits: ["sao.service_hours_logged"],
     listensTo: [],
-    priceCentavos: 300_000,
+    priceCentavos: 200_000,
   },
   analytics: {
     key: "analytics",
@@ -140,7 +140,7 @@ export const MODULES: Record<ModuleKey, ModuleDefinition> = {
     owns: [],
     emits: [],
     listensTo: ["*"],
-    priceCentavos: 500_000,
+    priceCentavos: 400_000,
   },
 };
 
